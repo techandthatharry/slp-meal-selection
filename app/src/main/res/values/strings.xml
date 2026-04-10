@@ -1,3 +1,31 @@
 <resources>
     <string name="app_name">SLP Meal Selection</string>
+    <string name="slp_logo">SLP logo</string>
+    <string name="tech_and_that_logo">Tech and That logo</string>
+    <string name="meal_selection_kitchen">Meal Selection Kitchen</string>
+    <string name="setup_title">Setup Tablet</string>
+    <string name="select_school_prompt">What school do you want to open?</string>
+    <string name="select_tablet_type">Select tablet type</string>
+    <string name="kitchen_side_tablet">Kitchen based tablet</string>
+    <string name="child_facing_tablet">Child facing tablet</string>
+    <string name="username_label">Username</string>
+    <string name="password_label">Password</string>
+    <string name="username_hint">Enter username</string>
+    <string name="password_hint">Enter password</string>
+    <string name="continue_label">Continue</string>
+    <string name="select_tablet_type_error">Please select tablet type.</string>
+    <string name="invalid_credentials_error">Invalid credentials for selected tablet type.</string>
+    <string name="school_selected">School: %1$s</string>
+    <string name="active_school_label">School</string>
+    <string name="kitchen_side">Kitchen Side</string>
+    <string name="child_facing">Child Facing</string>
+    <string name="kitchen_dashboard_title">Kitchen Dashboard</string>
+    <string name="kitchen_dashboard_subtitle">Ready for service at %1$s.</string>
+    <string name="child_dashboard_title">Canteen Check-In</string>
+    <string name="child_dashboard_subtitle">Children can now check in at %1$s.</string>
+    <string name="morning_prep">Morning prep list</string>
+    <string name="check_in_title">Check-in status</string>
+    <string name="available_classes">Available classes: %1$s</string>
+    <string name="all_meals_served">All meals served for today.</string>
+    <string name="powered_by">Powered by</string>
 </resources>
