@@ -1,22 +1,24 @@
 # SLP Meal Selection Android App
 
-This project wraps `demo.html` into an Android tablet app using a full-screen `WebView`.
+This app is a native Android tablet workflow for school meal service, with separate **Kitchen** and **Child-facing** modes.
 
-## What was added
-- Android project structure (`app` module + Gradle files)
-- `MainActivity` that loads `file:///android_asset/demo.html`
-- Tablet-friendly landscape launch setup
-- Local assets copied to `app/src/main/assets`:
-  - `demo.html`
-  - `SLP.jpg`
-  - `TechandThatLogoWhite.png`
+## What the app does
+- Lets a user log in as either kitchen or child tablet.
+- Kitchen side can start service, view prep totals, and mark active meals as served.
+- Child side can start meal time, select a class, select a child, and submit a check-in.
+- After child confirmation, the child tablet shows a waiting overlay until kitchen marks the meal as served.
+
+## Current UX behavior
+- Full-screen landscape tablet layout with branded header/footer.
+- Child check-in uses large touch-first buttons for class and child selection.
+- Child header bar remains orange throughout child-facing mode.
+- Login/setup screen resizes for keyboard (`adjustResize`) so username/password/continue remain accessible.
 
 ## Run in Android Studio
 1. Open this folder in Android Studio.
 2. Let Gradle sync.
-3. If prompted, create/refresh Gradle wrapper from Android Studio (since `gradle-wrapper.jar` is not committed here).
-4. Run on an Android tablet (or landscape emulator).
+3. Run on an Android tablet (or landscape emulator).
 
 ## Notes
-- The UI and logic come directly from your existing HTML demo.
-- Future step (optional): replace mocked JS data with real API-backed data.
+- Sample meal and pupil data is currently in-memory in `MainActivity.kt`.
+- Next step can be replacing this with an API or persistent storage.

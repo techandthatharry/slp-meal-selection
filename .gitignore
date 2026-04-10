@@ -13,3 +13,8 @@
 /captures
 .externalNativeBuild
 .cxx
+
+# Firebender local chat history
+.idea/firebender/chat_history.db
+.idea/firebender/chat_history.db-shm
+.idea/firebender/chat_history.db-wal

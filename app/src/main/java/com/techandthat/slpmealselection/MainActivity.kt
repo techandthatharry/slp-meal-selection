@@ -243,6 +243,12 @@ class MainActivity : ComponentActivity() {
         } else {
             getString(R.string.service_status_not_started)
         }
+        binding.serviceStatusText.setTextColor(
+            ContextCompat.getColor(
+                this,
+                if (serviceStarted) R.color.child_green else R.color.slp_blue
+            )
+        )
         binding.startServiceButton.isEnabled = !serviceStarted
 
         if (serviceStarted) {
@@ -276,8 +282,7 @@ class MainActivity : ComponentActivity() {
     private fun renderChildView() {
         binding.schoolSelectorRow.visibility = View.GONE
 
-        val headerColor = if (activeOrder != null) R.color.child_orange else R.color.child_green
-        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, headerColor))
+        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.child_orange))
         binding.headerTitle.text = getString(R.string.child_facing)
         binding.headerSubtitle.text = getString(R.string.child_tablet_mode)
         binding.contentTitle.text = getString(R.string.child_dashboard_title)

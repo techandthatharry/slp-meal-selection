@@ -40,6 +40,7 @@
         android:id="@+id/setupContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:fillViewport="true"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -163,6 +164,10 @@
                 android:textColor="#DC3545"
                 android:textStyle="bold"
                 android:visibility="gone" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="220dp" />
         </LinearLayout>
     </ScrollView>
 
