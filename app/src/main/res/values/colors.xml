@@ -2,4 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="slp_blue">#0E76BD</color>
+    <color name="child_green">#2E7D32</color>
+    <color name="child_orange">#EF6C00</color>
 </resources>

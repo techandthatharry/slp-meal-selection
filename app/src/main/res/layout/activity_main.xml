@@ -10,6 +10,7 @@
         android:id="@+id/splashContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:background="@color/slp_blue"
         android:gravity="center"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -28,8 +29,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
+            android:fontFamily="chakra petch"
             android:text="@string/meal_selection_kitchen"
-            android:textColor="#0E76BD"
+            android:textColor="@color/white"
             android:textSize="34sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -55,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:text="@string/setup_title"
-                android:textColor="#0E76BD"
+                android:textColor="@color/slp_blue"
                 android:textSize="30sp"
                 android:textStyle="bold" />
 
@@ -176,9 +178,10 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
+            android:id="@+id/headerBar"
             android:layout_width="match_parent"
             android:layout_height="80dp"
-            android:background="#0E76BD"
+            android:background="@color/slp_blue"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="16dp">
@@ -200,7 +203,7 @@
                     android:id="@+id/headerTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/white"
                     android:textSize="26sp"
                     android:textStyle="bold" />
 
@@ -208,15 +211,25 @@
                     android:id="@+id/headerSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/white"
                     android:textSize="16sp" />
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/backToSetupButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/back_to_setup"
+                android:textColor="@color/white"
+                app:strokeColor="@color/white" />
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/schoolSelectorRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#FFFFFF"
+            android:background="@color/white"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="16dp">
@@ -268,19 +281,83 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/morning_prep"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/prepSummary"
+                    <LinearLayout
+                        android:id="@+id/prepListContainer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:textSize="18sp" />
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/morning_prep"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/prepSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textSize="18sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/serviceControlContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/serviceStatusText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/slp_blue"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/startServiceButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/start_service" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/kitchenOrderContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/kitchenOrderChildName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:textSize="40sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/kitchenOrderMealName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:gravity="center"
+                            android:textSize="34sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/mealServedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:text="@string/meal_served" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <LinearLayout
@@ -292,18 +369,119 @@
                     android:visibility="gone">
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/check_in_title"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/checkInSummary"
+                        android:id="@+id/childServiceGateText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:textSize="18sp" />
+                        android:textColor="@color/child_green"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/startMealTimeButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/start_meal_time" />
+
+                    <FrameLayout
+                        android:id="@+id/childStepContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="520dp"
+                        android:layout_marginTop="12dp"
+                        android:visibility="gone">
+
+                        <ScrollView
+                            android:id="@+id/classSelectionContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:fillViewport="true"
+                            android:visibility="gone">
+
+                            <LinearLayout
+                                android:id="@+id/classButtonsContainer"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical" />
+                        </ScrollView>
+
+                        <LinearLayout
+                            android:id="@+id/nameSelectionContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/backToClassesButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/back_to_classes" />
+
+                            <ScrollView
+                                android:id="@+id/nameListScroll"
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_marginTop="8dp"
+                                android:layout_weight="1"
+                                android:fillViewport="true">
+
+                                <LinearLayout
+                                    android:id="@+id/nameButtonsContainer"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical" />
+                            </ScrollView>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/checkInSuccessContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="horizontal"
+                            android:visibility="gone">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/checkInSuccessButton"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="0.85"
+                                android:backgroundTint="@color/child_green"
+                                android:text="@string/check_in_success_large"
+                                android:textAllCaps="false"
+                                android:textColor="@color/white"
+                                android:textSize="40sp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/oopsButton"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginStart="8dp"
+                                android:layout_weight="0.15"
+                                android:backgroundTint="#D32F2F"
+                                android:text="@string/oops"
+                                android:textAllCaps="false"
+                                android:textColor="@color/white"
+                                android:textSize="22sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/waitingOverlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="#CC000000"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/waiting_for_kitchen_overlay"
+                                android:textColor="@color/white"
+                                android:textSize="36sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </FrameLayout>
                 </LinearLayout>
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
@@ -319,7 +497,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/powered_by"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/white"
                 android:textSize="14sp" />
 
             <ImageView

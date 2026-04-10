@@ -5,9 +5,12 @@ import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.LinearLayout
 import android.widget.RadioButton
 import androidx.activity.ComponentActivity
+import androidx.core.content.ContextCompat
 import androidx.core.widget.NestedScrollView
+import com.google.android.material.button.MaterialButton
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import java.io.IOException
 
@@ -24,6 +27,13 @@ class MainActivity : ComponentActivity() {
     private enum class TabletType {
         KITCHEN,
         CHILD
+    }
+
+    private enum class ChildScreen {
+        IDLE,
+        CLASS_SELECTION,
+        NAME_SELECTION,
+        SUCCESS
     }
 
     private data class MealEntry(
@@ -43,6 +53,11 @@ class MainActivity : ComponentActivity() {
     )
 
     private var selectedTabletType: TabletType? = null
+    private var serviceStarted = false
+    private var mealTimeStarted = false
+    private var selectedClass: String? = null
+    private var childScreen: ChildScreen = ChildScreen.IDLE
+    private var activeOrder: MealEntry? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,9 +70,36 @@ class MainActivity : ComponentActivity() {
         loadBrandAssets()
         showSplashThenSetup()
 
-        binding.loginButton.setOnClickListener {
-            handleLogin()
+        binding.loginButton.setOnClickListener { handleLogin() }
+        binding.startServiceButton.setOnClickListener {
+            serviceStarted = true
+            renderAppContent()
         }
+        binding.startMealTimeButton.setOnClickListener {
+            mealTimeStarted = true
+            selectedClass = null
+            childScreen = ChildScreen.CLASS_SELECTION
+            renderChildView()
+        }
+        binding.backToClassesButton.setOnClickListener {
+            childScreen = ChildScreen.CLASS_SELECTION
+            renderChildView()
+        }
+        binding.oopsButton.setOnClickListener {
+            childScreen = ChildScreen.NAME_SELECTION
+            renderChildView()
+        }
+        binding.checkInSuccessButton.setOnClickListener {
+            childScreen = ChildScreen.CLASS_SELECTION
+            renderChildView()
+        }
+        binding.mealServedButton.setOnClickListener {
+            activeOrder?.served = true
+            activeOrder = null
+            childScreen = ChildScreen.CLASS_SELECTION
+            renderAppContent()
+        }
+        binding.backToSetupButton.setOnClickListener { returnToSetup() }
 
         binding.activeSchoolSpinner.onItemSelectedListener = SimpleItemSelectedListener { school ->
             binding.headerSubtitle.text = getString(R.string.school_selected, school)
@@ -77,7 +119,6 @@ class MainActivity : ComponentActivity() {
     private fun setupSchoolSpinners() {
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, schools)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
         binding.initialSchoolSpinner.adapter = adapter
         binding.activeSchoolSpinner.adapter = adapter
     }
@@ -129,7 +170,6 @@ class MainActivity : ComponentActivity() {
         selectedTabletType = tabletType
         binding.setupErrorText.visibility = View.GONE
         binding.activeSchoolSpinner.setSelection(binding.initialSchoolSpinner.selectedItemPosition)
-
         binding.setupContainer.visibility = View.GONE
         binding.appContainer.visibility = View.VISIBLE
         renderAppContent()
@@ -147,11 +187,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun isCredentialValid(tabletType: TabletType, username: String, password: String): Boolean {
-        return when (tabletType) {
-            TabletType.KITCHEN -> username == "kitchen" && password == "kitchen"
-            TabletType.CHILD -> username == "child" && password == "child"
-        }
+    private fun isCredentialValid(tabletType: TabletType, username: String, password: String): Boolean = when (tabletType) {
+        TabletType.KITCHEN -> username == "kitchen" && password == "kitchen"
+        TabletType.CHILD -> username == "child" && password == "child"
     }
 
     private fun showSetupError(message: String) {
@@ -159,16 +197,32 @@ class MainActivity : ComponentActivity() {
         binding.setupErrorText.visibility = View.VISIBLE
     }
 
+    private fun returnToSetup() {
+        binding.appContainer.visibility = View.GONE
+        binding.setupContainer.visibility = View.VISIBLE
+
+        selectedTabletType = null
+        selectedClass = null
+        mealTimeStarted = false
+        childScreen = ChildScreen.IDLE
+        binding.tabletTypeGroup.clearCheck()
+        binding.usernameInput.text?.clear()
+        binding.passwordInput.text?.clear()
+        binding.setupErrorText.visibility = View.GONE
+    }
+
     private fun renderAppContent() {
-        val school = binding.activeSchoolSpinner.selectedItem?.toString().orEmpty()
         when (selectedTabletType) {
-            TabletType.KITCHEN -> renderKitchenView(school)
-            TabletType.CHILD -> renderChildView(school)
+            TabletType.KITCHEN -> renderKitchenView()
+            TabletType.CHILD -> renderChildView()
             null -> Unit
         }
     }
 
-    private fun renderKitchenView(school: String) {
+    private fun renderKitchenView() {
+        val school = binding.activeSchoolSpinner.selectedItem?.toString().orEmpty()
+        binding.schoolSelectorRow.visibility = View.VISIBLE
+        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.slp_blue))
         binding.headerTitle.text = getString(R.string.kitchen_side)
         binding.contentTitle.text = getString(R.string.kitchen_dashboard_title)
         binding.contentSubtitle.text = getString(R.string.kitchen_dashboard_subtitle, school)
@@ -176,37 +230,166 @@ class MainActivity : ComponentActivity() {
         binding.kitchenContent.visibility = View.VISIBLE
         binding.childContent.visibility = View.GONE
 
-        val outstandingMeals = simulatedDatabase.filterNot { it.served }
-        val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
-
-        val summary = if (volumes.isEmpty()) {
-            getString(R.string.all_meals_served)
+        binding.serviceStatusText.text = if (serviceStarted) {
+            getString(R.string.service_status_started)
         } else {
-            volumes.entries.joinToString(separator = "\n") { (meal, count) ->
-                "• $meal: $count"
-            }
+            getString(R.string.service_status_not_started)
+        }
+        binding.startServiceButton.isEnabled = !serviceStarted
+
+        if (serviceStarted) {
+            binding.kitchenContent.removeView(binding.prepListContainer)
+            binding.kitchenContent.addView(binding.prepListContainer)
+        } else {
+            binding.kitchenContent.removeView(binding.prepListContainer)
+            binding.kitchenContent.addView(binding.prepListContainer, 0)
         }
 
-        binding.prepSummary.text = summary
+        val outstandingMeals = simulatedDatabase.filterNot { it.served }
+        val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
+        binding.prepSummary.text = if (volumes.isEmpty()) {
+            getString(R.string.all_meals_served)
+        } else {
+            volumes.entries.joinToString(separator = "\n") { (meal, count) -> "• $meal: $count" }
+        }
+
+        if (serviceStarted && activeOrder != null) {
+            binding.kitchenOrderContainer.visibility = View.VISIBLE
+            binding.kitchenOrderChildName.text = activeOrder?.name
+            binding.kitchenOrderMealName.text = activeOrder?.meal
+            binding.mealServedButton.isEnabled = true
+        } else {
+            binding.kitchenOrderContainer.visibility = View.GONE
+        }
+
         (binding.appContainer.getChildAt(2) as? NestedScrollView)?.scrollTo(0, 0)
     }
 
-    private fun renderChildView(school: String) {
+    private fun renderChildView() {
+        binding.schoolSelectorRow.visibility = View.GONE
+
+        val headerColor = if (activeOrder != null) R.color.child_orange else R.color.child_green
+        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, headerColor))
         binding.headerTitle.text = getString(R.string.child_facing)
+        binding.headerSubtitle.text = getString(R.string.child_tablet_mode)
         binding.contentTitle.text = getString(R.string.child_dashboard_title)
-        binding.contentSubtitle.text = getString(R.string.child_dashboard_subtitle, school)
+        binding.contentSubtitle.text = getString(R.string.child_dashboard_subtitle_simple)
 
         binding.kitchenContent.visibility = View.GONE
         binding.childContent.visibility = View.VISIBLE
 
-        val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
-        binding.checkInSummary.text = if (classes.isEmpty()) {
-            getString(R.string.all_meals_served)
-        } else {
-            getString(R.string.available_classes, classes.joinToString())
+        if (!serviceStarted) {
+            mealTimeStarted = false
+            selectedClass = null
+            childScreen = ChildScreen.IDLE
+            binding.childServiceGateText.text = getString(R.string.child_waiting_for_service)
+            binding.startMealTimeButton.visibility = View.GONE
+            binding.childStepContainer.visibility = View.GONE
+            binding.waitingOverlay.visibility = View.GONE
+            return
         }
 
-        (binding.appContainer.getChildAt(2) as? NestedScrollView)?.scrollTo(0, 0)
+        binding.childServiceGateText.text = getString(R.string.child_service_live)
+        binding.startMealTimeButton.visibility = View.VISIBLE
+
+        if (!mealTimeStarted) {
+            childScreen = ChildScreen.IDLE
+            binding.childStepContainer.visibility = View.GONE
+            binding.waitingOverlay.visibility = View.GONE
+            return
+        }
+
+        binding.childStepContainer.visibility = View.VISIBLE
+
+        when (childScreen) {
+            ChildScreen.IDLE -> {
+                childScreen = ChildScreen.CLASS_SELECTION
+                showClassSelectionScreen()
+            }
+            ChildScreen.CLASS_SELECTION -> showClassSelectionScreen()
+            ChildScreen.NAME_SELECTION -> showNameSelectionScreen()
+            ChildScreen.SUCCESS -> showSuccessScreen()
+        }
+
+        binding.waitingOverlay.visibility = if (activeOrder != null) View.VISIBLE else View.GONE
+    }
+
+    private fun showClassSelectionScreen() {
+        binding.classSelectionContainer.visibility = View.VISIBLE
+        binding.nameSelectionContainer.visibility = View.GONE
+        binding.checkInSuccessContainer.visibility = View.GONE
+
+        val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
+        binding.classButtonsContainer.removeAllViews()
+
+        classes.forEach { className ->
+            val button = MaterialButton(this).apply {
+                text = className
+                textSize = 34f
+                isAllCaps = false
+                setPadding(24, 24, 24, 24)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = 14
+                }
+                setOnClickListener {
+                    if (activeOrder == null) {
+                        selectedClass = className
+                        childScreen = ChildScreen.NAME_SELECTION
+                        showNameSelectionScreen()
+                    }
+                }
+            }
+            binding.classButtonsContainer.addView(button)
+        }
+    }
+
+    private fun showNameSelectionScreen() {
+        binding.classSelectionContainer.visibility = View.GONE
+        binding.nameSelectionContainer.visibility = View.VISIBLE
+        binding.checkInSuccessContainer.visibility = View.GONE
+
+        val chosenClass = selectedClass
+        binding.nameButtonsContainer.removeAllViews()
+
+        if (chosenClass.isNullOrBlank()) {
+            childScreen = ChildScreen.CLASS_SELECTION
+            showClassSelectionScreen()
+            return
+        }
+
+        val children = simulatedDatabase.filter { !it.served && it.clazz == chosenClass }
+
+        children.forEach { child ->
+            val button = MaterialButton(this).apply {
+                text = child.name
+                textSize = 34f
+                isAllCaps = false
+                setPadding(24, 24, 24, 24)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = 14
+                }
+                setOnClickListener {
+                    if (activeOrder == null) {
+                        activeOrder = child
+                        childScreen = ChildScreen.SUCCESS
+                        renderAppContent()
+                    }
+                }
+            }
+            binding.nameButtonsContainer.addView(button)
+        }
+    }
+
+    private fun showSuccessScreen() {
+        binding.classSelectionContainer.visibility = View.GONE
+        binding.nameSelectionContainer.visibility = View.GONE
+        binding.checkInSuccessContainer.visibility = View.VISIBLE
     }
 }
 
