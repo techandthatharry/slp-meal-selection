@@ -1,54 +1,36 @@
 package com.techandthat.slpmealselection
 
-import android.graphics.BitmapFactory
-import android.graphics.Rect
 import android.os.Bundle
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import androidx.core.widget.NestedScrollView
-import com.google.android.material.button.MaterialButton
-import com.google.firebase.firestore.CollectionReference
-import com.google.firebase.firestore.FirebaseFirestore
+import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
-import java.io.IOException
+import com.techandthat.slpmealselection.model.ChildScreen
+import com.techandthat.slpmealselection.model.MealEntry
+import com.techandthat.slpmealselection.model.TabletType
+import com.techandthat.slpmealselection.ui.decodeAssetBitmap
+import com.techandthat.slpmealselection.ui.hideSystemUi
+import com.techandthat.slpmealselection.ui.renderClassSelectionStep
+import com.techandthat.slpmealselection.ui.renderNameSelectionStep
+import com.techandthat.slpmealselection.ui.renderSuccessStep
+import com.techandthat.slpmealselection.ui.setupKeyboardSafeLoginScroll
+import com.techandthat.slpmealselection.ui.setupSchoolSpinner
+import com.techandthat.slpmealselection.ui.showSplashThenSetup
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private val repository = ChildRecordsRepository()
 
     private val schools = listOf(
         "St Luke's Primary",
         "St Mary's Primary",
         "St Peter's Primary"
     )
-
-    private enum class TabletType {
-        KITCHEN,
-        CHILD
-    }
-
-    private enum class ChildScreen {
-        IDLE,
-        CLASS_SELECTION,
-        NAME_SELECTION,
-        SUCCESS
-    }
-
-    private data class MealEntry(
-        val name: String,
-        val clazz: String,
-        val meal: String,
-        var served: Boolean = false
-    )
-
-    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
-    private val childRecordsCollection: CollectionReference by lazy { firestore.collection("childRecords") }
 
     private val initialDummyData = listOf(
         MealEntry("Liam Smith", "Reception", "Tomato Pasta"),
@@ -78,13 +60,16 @@ class MainActivity : ComponentActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        hideSystemUi()
-        setupSchoolSpinners()
-        setupKeyboardSafeLoginScroll()
+        hideSystemUi(window)
+        setupSchoolSpinner(this, binding, schools)
+        setupKeyboardSafeLoginScroll(binding)
         loadBrandAssets()
         loadChildRecordsFromFirestore()
-        showSplashThenSetup()
+        showSplashThenSetup(binding)
+        bindListeners()
+    }
 
+    private fun bindListeners() {
         binding.loginButton.setOnClickListener { handleLogin() }
         binding.startServiceButton.setOnClickListener {
             serviceStarted = true
@@ -129,126 +114,53 @@ class MainActivity : ComponentActivity() {
         binding.backToSetupButton.setOnClickListener { returnToSetup() }
     }
 
-    private fun hideSystemUi() {
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        )
-    }
-
-    private fun setupSchoolSpinners() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, schools)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.initialSchoolSpinner.adapter = adapter
-    }
-
     private fun loadBrandAssets() {
-        val slpBitmap = decodeAssetBitmap("SLP.jpg")
-        if (slpBitmap != null) {
-            binding.splashLogo.setImageBitmap(slpBitmap)
-            binding.headerLogo.setImageBitmap(slpBitmap)
+        decodeAssetBitmap(assets, "SLP.jpg")?.let {
+            binding.splashLogo.setImageBitmap(it)
+            binding.headerLogo.setImageBitmap(it)
         }
 
-        val techBitmap = decodeAssetBitmap("TechandThatLogoWhite.png")
-        if (techBitmap != null) {
-            binding.footerLogo.setImageBitmap(techBitmap)
-        }
-    }
-
-    private fun decodeAssetBitmap(fileName: String) = try {
-        assets.open(fileName).use { BitmapFactory.decodeStream(it) }
-    } catch (_: IOException) {
-        null
-    }
-
-    private fun showSplashThenSetup() {
-        binding.splashContainer.visibility = View.VISIBLE
-        binding.setupContainer.visibility = View.GONE
-        binding.appContainer.visibility = View.GONE
-
-        binding.root.postDelayed({
-            binding.splashContainer.visibility = View.GONE
-            binding.setupContainer.visibility = View.VISIBLE
-        }, 1800)
-    }
-
-    private fun setupKeyboardSafeLoginScroll() {
-        val rootView = binding.root
-        val setupContainer = binding.setupContainer
-
-        rootView.viewTreeObserver.addOnGlobalLayoutListener {
-            val rect = Rect()
-            rootView.getWindowVisibleDisplayFrame(rect)
-            val keyboardHeight = rootView.height - rect.bottom
-            val keyboardVisible = keyboardHeight > rootView.height * 0.15
-
-            if (setupContainer.visibility != View.VISIBLE) return@addOnGlobalLayoutListener
-
-            val extraBottomPadding = if (keyboardVisible) keyboardHeight + 24 else 24
-            binding.setupFormContainer.setPadding(
-                binding.setupFormContainer.paddingLeft,
-                binding.setupFormContainer.paddingTop,
-                binding.setupFormContainer.paddingRight,
-                extraBottomPadding
-            )
-
-            if (!keyboardVisible) return@addOnGlobalLayoutListener
-
-            setupContainer.post {
-                setupContainer.smoothScrollTo(0, binding.loginButton.bottom)
-            }
+        decodeAssetBitmap(assets, "TechandThatLogoWhite.png")?.let {
+            binding.footerLogo.setImageBitmap(it)
         }
     }
 
     private fun loadChildRecordsFromFirestore() {
-        childRecordsCollection.get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.isEmpty) {
+        repository.loadRecords(
+            onSuccess = { records ->
+                if (records.isEmpty()) {
                     seedFirestoreFromInitialData()
-                    return@addOnSuccessListener
+                    return@loadRecords
                 }
 
-                val records = snapshot.documents.mapNotNull { doc ->
-                    val childName = doc.getString("childName")
-                    val className = doc.getString("className")
-                    if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
-                    val meal = fallbackMealByChild["$childName|$className"] ?: "Meal"
-                    MealEntry(childName, className, meal)
+                val mapped = records.map { record ->
+                    val meal = fallbackMealByChild["${record.childName}|${record.className}"] ?: "Meal"
+                    MealEntry(record.childName, record.className, meal)
                 }
 
                 simulatedDatabase.clear()
-                simulatedDatabase.addAll(records)
+                simulatedDatabase.addAll(mapped)
                 renderAppContent()
-            }
-            .addOnFailureListener { error ->
+            },
+            onFailure = { error ->
                 val failureMessage = getString(R.string.firebase_load_failed_with_reason, error.message ?: "unknown")
                 firebaseStatusMessage = failureMessage
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderAppContent()
                 renderKitchenView()
             }
+        )
     }
 
     private fun seedFirestoreFromInitialData() {
-        val batch = firestore.batch()
-        initialDummyData.forEach { entry ->
-            val record = mapOf(
-                "childName" to entry.name,
-                "className" to entry.clazz,
-                "schoolName" to selectedSchool
-            )
-            val documentId = "${entry.clazz}_${entry.name}".replace(" ", "_")
-            batch.set(childRecordsCollection.document(documentId), record)
-        }
-
-        batch.commit()
-            .addOnSuccessListener {
+        repository.seedInitialData(
+            initialDummyData = initialDummyData,
+            schoolName = selectedSchool,
+            onSuccess = {
                 loadChildRecordsFromFirestore()
                 renderKitchenView()
-            }
-            .addOnFailureListener { error ->
+            },
+            onFailure = { error ->
                 val failureMessage = getString(
                     R.string.firebase_seed_failed_with_reason,
                     error.message ?: "unknown"
@@ -257,6 +169,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderKitchenView()
             }
+        )
     }
 
     private fun showChangeSchoolDialog() {
@@ -284,35 +197,25 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun endServiceAndDeleteRecords() {
-        childRecordsCollection.get()
-            .addOnSuccessListener { snapshot ->
-                val batch = firestore.batch()
-                snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
-                batch.commit()
-                    .addOnSuccessListener {
-                        simulatedDatabase.clear()
-                        activeOrder = null
-                        selectedClass = null
-                        showWaitingOverlayAfterConfirm = false
-                        serviceStarted = false
-                        mealTimeStarted = false
-                        childScreen = ChildScreen.IDLE
-                        renderAppContent()
-                        Toast.makeText(this, getString(R.string.service_reset_done), Toast.LENGTH_SHORT).show()
-                    }
-                    .addOnFailureListener { error ->
-                        val failureMessage = getString(R.string.firebase_delete_failed_with_reason, error.message ?: "unknown")
-                        firebaseStatusMessage = failureMessage
-                        Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
-                        renderKitchenView()
-                    }
-            }
-            .addOnFailureListener { error ->
+        repository.deleteAllRecords(
+            onSuccess = {
+                simulatedDatabase.clear()
+                activeOrder = null
+                selectedClass = null
+                showWaitingOverlayAfterConfirm = false
+                serviceStarted = false
+                mealTimeStarted = false
+                childScreen = ChildScreen.IDLE
+                renderAppContent()
+                Toast.makeText(this, getString(R.string.service_reset_done), Toast.LENGTH_SHORT).show()
+            },
+            onFailure = { error ->
                 val failureMessage = getString(R.string.firebase_delete_failed_with_reason, error.message ?: "unknown")
                 firebaseStatusMessage = failureMessage
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderKitchenView()
             }
+        )
     }
 
     private fun handleLogin() {
@@ -412,6 +315,7 @@ class MainActivity : ComponentActivity() {
                 if (serviceStarted) R.color.child_green else R.color.slp_blue
             )
         )
+
         val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
         val shouldHideLoadAndStart = serviceStarted && hasCheckInStarted
 
@@ -460,7 +364,7 @@ class MainActivity : ComponentActivity() {
             binding.kitchenContent.addView(binding.kitchenOrderContainer)
         }
 
-        (binding.appContainer.getChildAt(2) as? NestedScrollView)?.scrollTo(0, 0)
+        binding.appScrollView.scrollTo(0, 0)
     }
 
     private fun renderChildView() {
@@ -513,99 +417,57 @@ class MainActivity : ComponentActivity() {
         when (childScreen) {
             ChildScreen.IDLE -> {
                 childScreen = ChildScreen.CLASS_SELECTION
-                showClassSelectionScreen()
+                renderClassSelectionStep(
+                    context = this,
+                    binding = binding,
+                    simulatedDatabase = simulatedDatabase,
+                    showWaitingOverlayAfterConfirm = showWaitingOverlayAfterConfirm,
+                    onClassSelected = { selected ->
+                        selectedClass = selected
+                        childScreen = ChildScreen.NAME_SELECTION
+                        renderChildView()
+                    }
+                )
             }
-            ChildScreen.CLASS_SELECTION -> showClassSelectionScreen()
-            ChildScreen.NAME_SELECTION -> showNameSelectionScreen()
-            ChildScreen.SUCCESS -> showSuccessScreen()
+
+            ChildScreen.CLASS_SELECTION -> {
+                renderClassSelectionStep(
+                    context = this,
+                    binding = binding,
+                    simulatedDatabase = simulatedDatabase,
+                    showWaitingOverlayAfterConfirm = showWaitingOverlayAfterConfirm,
+                    onClassSelected = { selected ->
+                        selectedClass = selected
+                        childScreen = ChildScreen.NAME_SELECTION
+                        renderChildView()
+                    }
+                )
+            }
+
+            ChildScreen.NAME_SELECTION -> {
+                renderNameSelectionStep(
+                    context = this,
+                    binding = binding,
+                    simulatedDatabase = simulatedDatabase,
+                    selectedClass = selectedClass,
+                    activeOrder = activeOrder,
+                    showWaitingOverlayAfterConfirm = showWaitingOverlayAfterConfirm,
+                    onMissingClass = {
+                        childScreen = ChildScreen.CLASS_SELECTION
+                        renderChildView()
+                    },
+                    onChildSelected = { child ->
+                        activeOrder = child
+                        childScreen = ChildScreen.SUCCESS
+                        renderAppContent()
+                    }
+                )
+            }
+
+            ChildScreen.SUCCESS -> renderSuccessStep(binding)
         }
 
         val shouldShowOverlay = showWaitingOverlayAfterConfirm && activeOrder != null && childScreen == ChildScreen.CLASS_SELECTION
         binding.waitingOverlay.visibility = if (shouldShowOverlay) View.VISIBLE else View.GONE
     }
-
-    private fun showClassSelectionScreen() {
-        binding.classSelectionContainer.visibility = View.VISIBLE
-        binding.nameSelectionContainer.visibility = View.GONE
-        binding.checkInSuccessContainer.visibility = View.GONE
-
-        val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
-        binding.classButtonsContainer.removeAllViews()
-
-        val classButtonHeight = (binding.childStepContainer.height.takeIf { it > 0 }
-            ?: resources.displayMetrics.heightPixels) / 4
-
-        classes.forEach { className ->
-            val button = MaterialButton(this).apply {
-                text = className
-                textSize = 34f
-                isAllCaps = false
-                setPadding(24, 24, 24, 24)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    classButtonHeight
-                ).apply {
-                    topMargin = 12
-                }
-                setOnClickListener {
-                    if (!showWaitingOverlayAfterConfirm) {
-                        selectedClass = className
-                        childScreen = ChildScreen.NAME_SELECTION
-                        showNameSelectionScreen()
-                    }
-                }
-            }
-            binding.classButtonsContainer.addView(button)
-        }
-    }
-
-    private fun showNameSelectionScreen() {
-        binding.classSelectionContainer.visibility = View.GONE
-        binding.nameSelectionContainer.visibility = View.VISIBLE
-        binding.checkInSuccessContainer.visibility = View.GONE
-        binding.backToClassesButton.visibility = View.VISIBLE
-
-        val chosenClass = selectedClass
-        binding.nameButtonsContainer.removeAllViews()
-
-        if (chosenClass.isNullOrBlank()) {
-            childScreen = ChildScreen.CLASS_SELECTION
-            showClassSelectionScreen()
-            return
-        }
-
-        val children = simulatedDatabase.filter { !it.served && it.clazz == chosenClass }
-        val childButtonHeight = (binding.childStepContainer.height.takeIf { it > 0 }
-            ?: resources.displayMetrics.heightPixels) / 5
-
-        children.forEach { child ->
-            val button = MaterialButton(this).apply {
-                text = child.name
-                textSize = 34f
-                isAllCaps = false
-                setPadding(24, 24, 24, 24)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    childButtonHeight
-                ).apply {
-                    topMargin = 12
-                }
-                setOnClickListener {
-                    if (activeOrder == null && !showWaitingOverlayAfterConfirm) {
-                        activeOrder = child
-                        childScreen = ChildScreen.SUCCESS
-                        renderAppContent()
-                    }
-                }
-            }
-            binding.nameButtonsContainer.addView(button)
-        }
-    }
-
-    private fun showSuccessScreen() {
-        binding.classSelectionContainer.visibility = View.GONE
-        binding.nameSelectionContainer.visibility = View.GONE
-        binding.checkInSuccessContainer.visibility = View.VISIBLE
-    }
 }
-
