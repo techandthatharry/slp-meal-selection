@@ -2,6 +2,7 @@ package com.techandthat.slpmealselection
 
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.graphics.Rect
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -68,6 +69,7 @@ class MainActivity : ComponentActivity() {
 
         hideSystemUi()
         setupSchoolSpinners()
+        setupKeyboardSafeLoginScroll()
         loadBrandAssets()
         showSplashThenSetup()
 
@@ -89,6 +91,8 @@ class MainActivity : ComponentActivity() {
             renderChildView()
         }
         binding.oopsButton.setOnClickListener {
+            activeOrder = null
+            showWaitingOverlayAfterConfirm = false
             childScreen = ChildScreen.NAME_SELECTION
             renderChildView()
         }
@@ -159,6 +163,28 @@ class MainActivity : ComponentActivity() {
         }, 1800)
     }
 
+    private fun setupKeyboardSafeLoginScroll() {
+        val rootView = binding.root
+        val setupContainer = binding.setupContainer
+        val loginFields = listOf(binding.usernameInput, binding.passwordInput, binding.loginButton)
+
+        rootView.viewTreeObserver.addOnGlobalLayoutListener {
+            val rect = Rect()
+            rootView.getWindowVisibleDisplayFrame(rect)
+            val keyboardHeight = rootView.height - rect.bottom
+            val keyboardVisible = keyboardHeight > rootView.height * 0.15
+
+            if (!keyboardVisible || setupContainer.visibility != View.VISIBLE) return@addOnGlobalLayoutListener
+
+            val focused = currentFocus ?: return@addOnGlobalLayoutListener
+            if (loginFields.none { it.id == focused.id }) return@addOnGlobalLayoutListener
+
+            setupContainer.post {
+                setupContainer.smoothScrollTo(0, binding.loginButton.bottom)
+            }
+        }
+    }
+
     private fun handleLogin() {
         val tabletType = resolveTabletType() ?: run {
             showSetupError(getString(R.string.select_tablet_type_error))
@@ -208,15 +234,18 @@ class MainActivity : ComponentActivity() {
         binding.setupContainer.visibility = View.VISIBLE
 
         selectedTabletType = null
-        selectedClass = null
-        activeOrder = null
-        showWaitingOverlayAfterConfirm = false
-        mealTimeStarted = false
-        childScreen = ChildScreen.IDLE
         binding.tabletTypeGroup.clearCheck()
         binding.usernameInput.text?.clear()
         binding.passwordInput.text?.clear()
         binding.setupErrorText.visibility = View.GONE
+
+        if (activeOrder?.served == true) {
+            activeOrder = null
+            showWaitingOverlayAfterConfirm = false
+            selectedClass = null
+            mealTimeStarted = false
+            childScreen = ChildScreen.IDLE
+        }
     }
 
     private fun renderAppContent() {
@@ -374,7 +403,7 @@ class MainActivity : ComponentActivity() {
         binding.classSelectionContainer.visibility = View.GONE
         binding.nameSelectionContainer.visibility = View.VISIBLE
         binding.checkInSuccessContainer.visibility = View.GONE
-        binding.backToClassesButton.visibility = View.GONE
+        binding.backToClassesButton.visibility = View.VISIBLE
 
         val chosenClass = selectedClass
         binding.nameButtonsContainer.removeAllViews()

@@ -15,6 +15,7 @@
 .cxx
 
 # Firebender local chat history
+.idea/firebender/
 .idea/firebender/chat_history.db
 .idea/firebender/chat_history.db-shm
 .idea/firebender/chat_history.db-wal
