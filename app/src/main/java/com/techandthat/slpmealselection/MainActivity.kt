@@ -341,7 +341,7 @@ class MainActivity : ComponentActivity() {
         )
 
         val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
-        val shouldHideLoadAndStart = serviceStarted && hasCheckInStarted
+        val shouldHideLoadAndStart = serviceStarted
 
         binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE

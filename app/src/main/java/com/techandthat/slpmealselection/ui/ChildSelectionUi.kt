@@ -20,8 +20,11 @@ fun renderClassSelectionStep(
     val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
     binding.classButtonsContainer.removeAllViews()
 
-    val classButtonHeight = (binding.childStepContainer.height.takeIf { it > 0 }
-        ?: context.resources.displayMetrics.heightPixels) / 4
+    val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
+        ?: binding.childStepContainer.height.takeIf { it > 0 }
+        ?: binding.classSelectionContainer.measuredHeight.takeIf { it > 0 }
+        ?: context.resources.displayMetrics.heightPixels
+    val classButtonHeight = containerHeight / 4
 
     classes.forEach { className ->
         val button = MaterialButton(context).apply {
@@ -68,8 +71,11 @@ fun renderNameSelectionStep(
     }
 
     val children = simulatedDatabase.filter { !it.served && it.clazz == selectedClass }
-    val childButtonHeight = (binding.childStepContainer.height.takeIf { it > 0 }
-        ?: context.resources.displayMetrics.heightPixels) / 5
+    val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
+        ?: binding.childStepContainer.height.takeIf { it > 0 }
+        ?: binding.nameSelectionContainer.measuredHeight.takeIf { it > 0 }
+        ?: context.resources.displayMetrics.heightPixels
+    val childButtonHeight = containerHeight / 5
 
     children.forEach { child ->
         val button = MaterialButton(context).apply {
