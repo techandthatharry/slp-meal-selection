@@ -341,6 +341,23 @@
                             android:text="@string/end_service"
                             android:textAllCaps="false"
                             android:textColor="@color/white" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/uploadDummyRosterButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/upload_dummy_roster" />
+
+                        <TextView
+                            android:id="@+id/firebaseStatusText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textColor="#D32F2F"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
                     </LinearLayout>
 
                     <LinearLayout

@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
     private val childRecordsCollection: CollectionReference by lazy { firestore.collection("childRecords") }
 
-    private val simulatedDatabase = mutableListOf(
+    private val initialDummyData = listOf(
         MealEntry("Liam Smith", "Reception", "Tomato Pasta"),
         MealEntry("Emma Jones", "Reception", "Fish & Chips"),
         MealEntry("Noah Williams", "Reception", "Tomato Pasta"),
@@ -60,6 +60,9 @@ class MainActivity : ComponentActivity() {
         MealEntry("Mia Davies", "Year 2", "Jacket Potato")
     )
 
+    private val fallbackMealByChild = initialDummyData.associate { "${it.name}|${it.clazz}" to it.meal }
+    private val simulatedDatabase = initialDummyData.toMutableList()
+
     private var selectedTabletType: TabletType? = null
     private var serviceStarted = false
     private var mealTimeStarted = false
@@ -67,6 +70,7 @@ class MainActivity : ComponentActivity() {
     private var childScreen: ChildScreen = ChildScreen.IDLE
     private var activeOrder: MealEntry? = null
     private var showWaitingOverlayAfterConfirm = false
+    private var firebaseStatusMessage: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +91,11 @@ class MainActivity : ComponentActivity() {
             renderAppContent()
         }
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
+        binding.uploadDummyRosterButton.setOnClickListener {
+            firebaseStatusMessage = "Uploading dummy roster to Firebase..."
+            renderKitchenView()
+            seedFirestoreFromInitialData(force = true)
+        }
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
             selectedClass = null
@@ -195,34 +204,68 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadChildRecordsFromFirestore() {
-        childRecordsCollection.get().addOnSuccessListener { snapshot ->
-            if (snapshot.isEmpty) {
-                seedFirestoreFromInitialData()
-                return@addOnSuccessListener
-            }
+        childRecordsCollection.get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    seedFirestoreFromInitialData(force = false)
+                    return@addOnSuccessListener
+                }
 
-            val records = snapshot.documents.mapNotNull { doc ->
-                val childName = doc.getString("childName")
-                val className = doc.getString("className")
-                if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
-                MealEntry(childName, className, "Meal")
-            }
+                val records = snapshot.documents.mapNotNull { doc ->
+                    val childName = doc.getString("childName")
+                    val className = doc.getString("className")
+                    if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
+                    val meal = fallbackMealByChild["$childName|$className"] ?: "Meal"
+                    MealEntry(childName, className, meal)
+                }
 
-            simulatedDatabase.clear()
-            simulatedDatabase.addAll(records)
-            renderAppContent()
-        }
+                simulatedDatabase.clear()
+                simulatedDatabase.addAll(records)
+                renderAppContent()
+            }
+            .addOnFailureListener { error ->
+                val failureMessage = getString(R.string.firebase_load_failed_with_reason, error.message ?: "unknown")
+                firebaseStatusMessage = failureMessage
+                Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                renderAppContent()
+                renderKitchenView()
+            }
     }
 
-    private fun seedFirestoreFromInitialData() {
+    private fun seedFirestoreFromInitialData(force: Boolean) {
         val currentSchool = binding.initialSchoolSpinner.selectedItem?.toString().orEmpty()
-        simulatedDatabase.forEach { entry ->
+
+        if (force) {
+            simulatedDatabase.clear()
+            simulatedDatabase.addAll(initialDummyData)
+        }
+
+        val batch = firestore.batch()
+        initialDummyData.forEach { entry ->
             val record = mapOf(
                 "childName" to entry.name,
                 "className" to entry.clazz,
                 "schoolName" to currentSchool
             )
-            childRecordsCollection.add(record)
+            val documentId = "${entry.clazz}_${entry.name}".replace(" ", "_")
+            batch.set(childRecordsCollection.document(documentId), record)
+        }
+
+        batch.commit().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val successMessage = getString(R.string.firebase_seed_success)
+                firebaseStatusMessage = successMessage
+                Toast.makeText(this, successMessage, Toast.LENGTH_LONG).show()
+                loadChildRecordsFromFirestore()
+            } else {
+                val failureMessage = getString(
+                    R.string.firebase_seed_failed_with_reason,
+                    task.exception?.message ?: "unknown"
+                )
+                firebaseStatusMessage = failureMessage
+                Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+            }
+            renderKitchenView()
         }
     }
 
@@ -238,21 +281,35 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun endServiceAndDeleteRecords() {
-        childRecordsCollection.get().addOnSuccessListener { snapshot ->
-            val batch = firestore.batch()
-            snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
-            batch.commit().addOnSuccessListener {
-                simulatedDatabase.clear()
-                activeOrder = null
-                selectedClass = null
-                showWaitingOverlayAfterConfirm = false
-                serviceStarted = false
-                mealTimeStarted = false
-                childScreen = ChildScreen.IDLE
-                renderAppContent()
-                Toast.makeText(this, getString(R.string.service_reset_done), Toast.LENGTH_SHORT).show()
+        childRecordsCollection.get()
+            .addOnSuccessListener { snapshot ->
+                val batch = firestore.batch()
+                snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+                batch.commit()
+                    .addOnSuccessListener {
+                        simulatedDatabase.clear()
+                        activeOrder = null
+                        selectedClass = null
+                        showWaitingOverlayAfterConfirm = false
+                        serviceStarted = false
+                        mealTimeStarted = false
+                        childScreen = ChildScreen.IDLE
+                        renderAppContent()
+                        Toast.makeText(this, getString(R.string.service_reset_done), Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { error ->
+                        val failureMessage = getString(R.string.firebase_delete_failed_with_reason, error.message ?: "unknown")
+                        firebaseStatusMessage = failureMessage
+                        Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                        renderKitchenView()
+                    }
             }
-        }
+            .addOnFailureListener { error ->
+                val failureMessage = getString(R.string.firebase_delete_failed_with_reason, error.message ?: "unknown")
+                firebaseStatusMessage = failureMessage
+                Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                renderKitchenView()
+            }
     }
 
     private fun handleLogin() {
@@ -350,6 +407,13 @@ class MainActivity : ComponentActivity() {
         )
         binding.startServiceButton.isEnabled = !serviceStarted
         binding.endServiceButton.isEnabled = serviceStarted || simulatedDatabase.isNotEmpty() || activeOrder != null
+
+        if (firebaseStatusMessage.isNullOrBlank()) {
+            binding.firebaseStatusText.visibility = View.GONE
+        } else {
+            binding.firebaseStatusText.text = firebaseStatusMessage
+            binding.firebaseStatusText.visibility = View.VISIBLE
+        }
 
         if (serviceStarted) {
             binding.kitchenContent.removeView(binding.prepListContainer)

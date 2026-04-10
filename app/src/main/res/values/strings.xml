@@ -34,6 +34,14 @@
     <string name="confirm_end_service_message">This will delete all child check-in records (name, class, school) for today. Continue?</string>
     <string name="cancel">Cancel</string>
     <string name="service_reset_done">Service ended and today’s records were deleted.</string>
+    <string name="upload_dummy_roster">Upload dummy roster to Firebase</string>
+    <string name="firebase_seed_success">Dummy roster uploaded to Firebase.</string>
+    <string name="firebase_seed_failed">Could not upload dummy roster to Firebase.</string>
+    <string name="firebase_load_failed">Could not load roster from Firebase.</string>
+    <string name="firebase_delete_failed">Could not delete today’s Firebase records.</string>
+    <string name="firebase_seed_failed_with_reason">Could not upload dummy roster to Firebase: %1$s</string>
+    <string name="firebase_load_failed_with_reason">Could not load roster from Firebase: %1$s</string>
+    <string name="firebase_delete_failed_with_reason">Could not delete today’s Firebase records: %1$s</string>
     <string name="service_status_started">Service is live. Children can check in now.</string>
     <string name="service_status_not_started">Service not started. Press Start Service to enable child check-in.</string>
     <string name="child_waiting_for_service">Waiting for kitchen to start service.</string>
