@@ -43,7 +43,9 @@ android {
 }
 
 dependencies {
-    implementation("com.google.firebase:firebase-firestore:25.1.1")
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

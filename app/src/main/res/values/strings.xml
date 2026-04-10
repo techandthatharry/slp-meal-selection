@@ -42,6 +42,7 @@
     <string name="firebase_seed_failed_with_reason">Could not upload dummy roster to Firebase: %1$s</string>
     <string name="firebase_load_failed_with_reason">Could not load roster from Firebase: %1$s</string>
     <string name="firebase_delete_failed_with_reason">Could not delete today’s Firebase records: %1$s</string>
+    <string name="firebase_auth_failed_with_reason">Could not authenticate with Firebase: %1$s</string>
     <string name="service_status_started">Service is live. Children can check in now.</string>
     <string name="service_status_not_started">Service not started. Press Start Service to enable child check-in.</string>
     <string name="child_waiting_for_service">Waiting for kitchen to start service.</string>

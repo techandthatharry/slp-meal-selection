@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import com.google.firebase.auth.FirebaseAuth
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import com.techandthat.slpmealselection.model.ChildScreen
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val repository = ChildRecordsRepository()
+    private val firebaseAuth by lazy { FirebaseAuth.getInstance() }
 
     private val schools = listOf(
         "St Luke's Primary",
@@ -64,7 +66,7 @@ class MainActivity : ComponentActivity() {
         setupSchoolSpinner(this, binding, schools)
         setupKeyboardSafeLoginScroll(binding)
         loadBrandAssets()
-        loadChildRecordsFromFirestore()
+        authenticateThenLoadRoster()
         showSplashThenSetup(binding)
         bindListeners()
     }
@@ -123,6 +125,28 @@ class MainActivity : ComponentActivity() {
         decodeAssetBitmap(assets, "TechandThatLogoWhite.png")?.let {
             binding.footerLogo.setImageBitmap(it)
         }
+    }
+
+    private fun authenticateThenLoadRoster() {
+        if (firebaseAuth.currentUser != null) {
+            loadChildRecordsFromFirestore()
+            return
+        }
+
+        firebaseAuth.signInAnonymously()
+            .addOnSuccessListener {
+                loadChildRecordsFromFirestore()
+            }
+            .addOnFailureListener { error ->
+                val failureMessage = getString(
+                    R.string.firebase_auth_failed_with_reason,
+                    error.message ?: "unknown"
+                )
+                firebaseStatusMessage = failureMessage
+                Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                renderAppContent()
+                renderKitchenView()
+            }
     }
 
     private fun loadChildRecordsFromFirestore() {
