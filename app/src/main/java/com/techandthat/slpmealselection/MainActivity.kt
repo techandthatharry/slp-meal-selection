@@ -4,7 +4,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.View
-import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.RadioButton
@@ -64,6 +63,7 @@ class MainActivity : ComponentActivity() {
     private val simulatedDatabase = initialDummyData.toMutableList()
 
     private var selectedTabletType: TabletType? = null
+    private var selectedSchool: String = schools.first()
     private var serviceStarted = false
     private var mealTimeStarted = false
     private var selectedClass: String? = null
@@ -91,6 +91,10 @@ class MainActivity : ComponentActivity() {
             renderAppContent()
         }
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
+        binding.changeSchoolButton.setOnClickListener { showChangeSchoolDialog() }
+        binding.loadTodaysMealsButton.setOnClickListener {
+            Toast.makeText(this, getString(R.string.load_todays_meals_placeholder), Toast.LENGTH_SHORT).show()
+        }
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
             selectedClass = null
@@ -123,11 +127,6 @@ class MainActivity : ComponentActivity() {
             renderAppContent()
         }
         binding.backToSetupButton.setOnClickListener { returnToSetup() }
-
-        binding.activeSchoolSpinner.onItemSelectedListener = SimpleItemSelectedListener { school ->
-            binding.headerSubtitle.text = getString(R.string.school_selected, school)
-            renderAppContent()
-        }
     }
 
     private fun hideSystemUi() {
@@ -143,7 +142,6 @@ class MainActivity : ComponentActivity() {
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, schools)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.initialSchoolSpinner.adapter = adapter
-        binding.activeSchoolSpinner.adapter = adapter
     }
 
     private fun loadBrandAssets() {
@@ -234,14 +232,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun seedFirestoreFromInitialData() {
-        val currentSchool = binding.initialSchoolSpinner.selectedItem?.toString().orEmpty()
-
         val batch = firestore.batch()
         initialDummyData.forEach { entry ->
             val record = mapOf(
                 "childName" to entry.name,
                 "className" to entry.clazz,
-                "schoolName" to currentSchool
+                "schoolName" to selectedSchool
             )
             val documentId = "${entry.clazz}_${entry.name}".replace(" ", "_")
             batch.set(childRecordsCollection.document(documentId), record)
@@ -249,9 +245,6 @@ class MainActivity : ComponentActivity() {
 
         batch.commit()
             .addOnSuccessListener {
-                val successMessage = getString(R.string.firebase_seed_success)
-                firebaseStatusMessage = successMessage
-                Toast.makeText(this, successMessage, Toast.LENGTH_LONG).show()
                 loadChildRecordsFromFirestore()
                 renderKitchenView()
             }
@@ -264,6 +257,19 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderKitchenView()
             }
+    }
+
+    private fun showChangeSchoolDialog() {
+        val selectedIndex = schools.indexOf(selectedSchool).takeIf { it >= 0 } ?: 0
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.change_school))
+            .setSingleChoiceItems(schools.toTypedArray(), selectedIndex) { dialog, which ->
+                selectedSchool = schools[which]
+                renderAppContent()
+                dialog.dismiss()
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
     }
 
     private fun confirmAndEndService() {
@@ -324,8 +330,8 @@ class MainActivity : ComponentActivity() {
         }
 
         selectedTabletType = tabletType
+        selectedSchool = binding.initialSchoolSpinner.selectedItem?.toString().orEmpty().ifBlank { schools.first() }
         binding.setupErrorText.visibility = View.GONE
-        binding.activeSchoolSpinner.setSelection(binding.initialSchoolSpinner.selectedItemPosition)
         binding.setupContainer.visibility = View.GONE
         binding.appContainer.visibility = View.VISIBLE
         renderAppContent()
@@ -381,12 +387,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun renderKitchenView() {
-        val school = binding.activeSchoolSpinner.selectedItem?.toString().orEmpty()
-        binding.schoolSelectorRow.visibility = View.VISIBLE
         binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.slp_blue))
         binding.headerTitle.text = getString(R.string.kitchen_side)
+        binding.headerSubtitle.text = getString(R.string.school_selected, selectedSchool)
         binding.contentTitle.text = getString(R.string.kitchen_dashboard_title)
-        binding.contentSubtitle.text = getString(R.string.kitchen_dashboard_subtitle, school)
+        binding.contentSubtitle.visibility = View.GONE
 
         binding.kitchenContent.visibility = View.VISIBLE
         binding.childContent.visibility = View.GONE
@@ -396,13 +401,27 @@ class MainActivity : ComponentActivity() {
         } else {
             getString(R.string.service_status_not_started)
         }
+        binding.prepListTitle.text = if (serviceStarted) {
+            getString(R.string.meals_to_be_served)
+        } else {
+            getString(R.string.meals_to_prepare)
+        }
         binding.serviceStatusText.setTextColor(
             ContextCompat.getColor(
                 this,
                 if (serviceStarted) R.color.child_green else R.color.slp_blue
             )
         )
+        val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
+        val shouldHideLoadAndStart = serviceStarted && hasCheckInStarted
+
+        binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
+        binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.startServiceButton.isEnabled = !serviceStarted
+        binding.loadTodaysMealsButton.isEnabled = !serviceStarted
+        binding.changeSchoolButton.visibility = View.VISIBLE
+        binding.endServiceButton.visibility = View.VISIBLE
+        binding.changeSchoolButton.isEnabled = !serviceStarted
         binding.endServiceButton.isEnabled = serviceStarted || simulatedDatabase.isNotEmpty() || activeOrder != null
 
         if (firebaseStatusMessage.isNullOrBlank()) {
@@ -410,14 +429,6 @@ class MainActivity : ComponentActivity() {
         } else {
             binding.firebaseStatusText.text = firebaseStatusMessage
             binding.firebaseStatusText.visibility = View.VISIBLE
-        }
-
-        if (serviceStarted) {
-            binding.kitchenContent.removeView(binding.prepListContainer)
-            binding.kitchenContent.addView(binding.prepListContainer)
-        } else {
-            binding.kitchenContent.removeView(binding.prepListContainer)
-            binding.kitchenContent.addView(binding.prepListContainer, 0)
         }
 
         val outstandingMeals = simulatedDatabase.filterNot { it.served }
@@ -437,15 +448,28 @@ class MainActivity : ComponentActivity() {
             binding.kitchenOrderContainer.visibility = View.GONE
         }
 
+        if (hasCheckInStarted) {
+            binding.kitchenContent.removeView(binding.kitchenOrderContainer)
+            binding.kitchenContent.addView(binding.kitchenOrderContainer, 0)
+            binding.kitchenContent.removeView(binding.prepListContainer)
+            binding.kitchenContent.addView(binding.prepListContainer)
+        } else {
+            binding.kitchenContent.removeView(binding.prepListContainer)
+            binding.kitchenContent.addView(binding.prepListContainer, 0)
+            binding.kitchenContent.removeView(binding.kitchenOrderContainer)
+            binding.kitchenContent.addView(binding.kitchenOrderContainer)
+        }
+
         (binding.appContainer.getChildAt(2) as? NestedScrollView)?.scrollTo(0, 0)
     }
 
     private fun renderChildView() {
-        binding.schoolSelectorRow.visibility = View.GONE
-
         binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.child_orange))
         binding.headerTitle.text = getString(R.string.child_facing)
         binding.headerSubtitle.text = getString(R.string.child_tablet_mode)
+        binding.loadTodaysMealsButton.visibility = View.GONE
+        binding.changeSchoolButton.visibility = View.GONE
+        binding.endServiceButton.visibility = View.GONE
         binding.contentTitle.text = getString(R.string.child_dashboard_title)
         binding.contentSubtitle.text = getString(R.string.child_dashboard_subtitle_simple)
 
@@ -461,6 +485,8 @@ class MainActivity : ComponentActivity() {
             showWaitingOverlayAfterConfirm = false
             childScreen = ChildScreen.IDLE
             binding.childServiceGateText.text = getString(R.string.child_waiting_for_service)
+            binding.childServiceGateText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+            binding.contentSubtitle.visibility = View.GONE
             binding.startMealTimeButton.visibility = View.GONE
             binding.childStepContainer.visibility = View.GONE
             binding.waitingOverlay.visibility = View.GONE
@@ -468,6 +494,8 @@ class MainActivity : ComponentActivity() {
         }
 
         binding.childServiceGateText.text = getString(R.string.child_service_live)
+        binding.childServiceGateText.setTextColor(ContextCompat.getColor(this, R.color.child_green))
+        binding.contentSubtitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
         binding.childServiceGateText.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
         binding.startMealTimeButton.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
 
@@ -581,14 +609,3 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private class SimpleItemSelectedListener(
-    private val onSelected: (String) -> Unit
-) : AdapterView.OnItemSelectedListener {
-
-    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        val value = parent?.getItemAtPosition(position)?.toString() ?: return
-        onSelected(value)
-    }
-
-    override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-}

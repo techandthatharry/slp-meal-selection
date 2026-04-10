@@ -150,12 +150,12 @@
                     android:singleLine="true" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/loginButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/continue_label" />
+                            <com.google.android.material.button.MaterialButton
+                    android:id="@+id/loginButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="96dp"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/continue_label" />
 
             <TextView
                 android:id="@+id/setupErrorText"
@@ -222,37 +222,53 @@
                     android:textSize="16sp" />
             </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/backToSetupButton"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/back_to_setup"
-                android:textColor="@color/white"
-                app:strokeColor="@color/white" />
-        </LinearLayout>
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-        <LinearLayout
-            android:id="@+id/schoolSelectorRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/white"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="16dp">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/backToSetupButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/back_to_setup"
+                    android:textColor="@color/white"
+                    app:strokeColor="@color/white" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/active_school_label"
-                android:textStyle="bold" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/changeSchoolButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="36dp"
+                    android:minWidth="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:backgroundTint="@color/slp_blue"
+                    android:text="@string/change_school"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
+                    android:textSize="11sp" />
 
-            <Spinner
-                android:id="@+id/activeSchoolSpinner"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/endServiceButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="36dp"
+                    android:minWidth="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:backgroundTint="#D32F2F"
+                    android:text="@string/end_service"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
+                    android:textSize="11sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <androidx.core.widget.NestedScrollView
@@ -273,12 +289,23 @@
                     android:textSize="26sp"
                     android:textStyle="bold" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/loadTodaysMealsButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="96dp"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/child_orange"
+                    android:text="@string/load_todays_meals"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white" />
+
                 <TextView
                     android:id="@+id/contentSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    android:visibility="gone" />
 
                 <LinearLayout
                     android:id="@+id/kitchenContent"
@@ -296,9 +323,10 @@
                         android:orientation="vertical">
 
                         <TextView
+                            android:id="@+id/prepListTitle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/morning_prep"
+                            android:text="@string/meals_to_prepare"
                             android:textSize="20sp"
                             android:textStyle="bold" />
 
@@ -328,26 +356,11 @@
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/startServiceButton"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="96dp"
                             android:layout_marginTop="12dp"
-                            android:text="@string/start_service" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/endServiceButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="40dp"
-                            android:layout_gravity="end"
-                            android:layout_marginTop="12dp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:minHeight="40dp"
-                            android:minWidth="0dp"
-                            android:paddingHorizontal="12dp"
-                            android:backgroundTint="#D32F2F"
-                            android:text="@string/end_service"
-                            android:textAllCaps="false"
-                            android:textColor="@color/white"
-                            android:textSize="12sp" />
+                            android:backgroundTint="@color/child_green"
+                            android:text="@string/start_service"
+                            android:textColor="@color/white" />
 
                         <TextView
                             android:id="@+id/firebaseStatusText"
@@ -388,7 +401,7 @@
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/mealServedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="96dp"
                             android:layout_marginTop="20dp"
                             android:text="@string/meal_served" />
                     </LinearLayout>
