@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private var selectedClass: String? = null
     private var childScreen: ChildScreen = ChildScreen.IDLE
     private var activeOrder: MealEntry? = null
+    private var showWaitingOverlayAfterConfirm = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +79,8 @@ class MainActivity : ComponentActivity() {
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
             selectedClass = null
+            activeOrder = null
+            showWaitingOverlayAfterConfirm = false
             childScreen = ChildScreen.CLASS_SELECTION
             renderChildView()
         }
@@ -90,12 +93,15 @@ class MainActivity : ComponentActivity() {
             renderChildView()
         }
         binding.checkInSuccessButton.setOnClickListener {
+            showWaitingOverlayAfterConfirm = true
             childScreen = ChildScreen.CLASS_SELECTION
             renderChildView()
         }
         binding.mealServedButton.setOnClickListener {
             activeOrder?.served = true
             activeOrder = null
+            showWaitingOverlayAfterConfirm = false
+            selectedClass = null
             childScreen = ChildScreen.CLASS_SELECTION
             renderAppContent()
         }
@@ -203,6 +209,8 @@ class MainActivity : ComponentActivity() {
 
         selectedTabletType = null
         selectedClass = null
+        activeOrder = null
+        showWaitingOverlayAfterConfirm = false
         mealTimeStarted = false
         childScreen = ChildScreen.IDLE
         binding.tabletTypeGroup.clearCheck()
@@ -277,10 +285,14 @@ class MainActivity : ComponentActivity() {
 
         binding.kitchenContent.visibility = View.GONE
         binding.childContent.visibility = View.VISIBLE
+        binding.contentTitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
+        binding.contentSubtitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
 
         if (!serviceStarted) {
             mealTimeStarted = false
             selectedClass = null
+            activeOrder = null
+            showWaitingOverlayAfterConfirm = false
             childScreen = ChildScreen.IDLE
             binding.childServiceGateText.text = getString(R.string.child_waiting_for_service)
             binding.startMealTimeButton.visibility = View.GONE
@@ -290,10 +302,13 @@ class MainActivity : ComponentActivity() {
         }
 
         binding.childServiceGateText.text = getString(R.string.child_service_live)
-        binding.startMealTimeButton.visibility = View.VISIBLE
+        binding.childServiceGateText.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
+        binding.startMealTimeButton.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
 
         if (!mealTimeStarted) {
             childScreen = ChildScreen.IDLE
+            binding.contentTitle.visibility = View.VISIBLE
+            binding.contentSubtitle.visibility = View.VISIBLE
             binding.childStepContainer.visibility = View.GONE
             binding.waitingOverlay.visibility = View.GONE
             return
@@ -311,7 +326,8 @@ class MainActivity : ComponentActivity() {
             ChildScreen.SUCCESS -> showSuccessScreen()
         }
 
-        binding.waitingOverlay.visibility = if (activeOrder != null) View.VISIBLE else View.GONE
+        val shouldShowOverlay = showWaitingOverlayAfterConfirm && activeOrder != null && childScreen == ChildScreen.CLASS_SELECTION
+        binding.waitingOverlay.visibility = if (shouldShowOverlay) View.VISIBLE else View.GONE
     }
 
     private fun showClassSelectionScreen() {
@@ -322,6 +338,9 @@ class MainActivity : ComponentActivity() {
         val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
         binding.classButtonsContainer.removeAllViews()
 
+        val classButtonHeight = (binding.childStepContainer.height.takeIf { it > 0 }
+            ?: resources.displayMetrics.heightPixels) / 4
+
         classes.forEach { className ->
             val button = MaterialButton(this).apply {
                 text = className
@@ -330,12 +349,12 @@ class MainActivity : ComponentActivity() {
                 setPadding(24, 24, 24, 24)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    classButtonHeight
                 ).apply {
-                    topMargin = 14
+                    topMargin = 12
                 }
                 setOnClickListener {
-                    if (activeOrder == null) {
+                    if (!showWaitingOverlayAfterConfirm) {
                         selectedClass = className
                         childScreen = ChildScreen.NAME_SELECTION
                         showNameSelectionScreen()
@@ -350,6 +369,7 @@ class MainActivity : ComponentActivity() {
         binding.classSelectionContainer.visibility = View.GONE
         binding.nameSelectionContainer.visibility = View.VISIBLE
         binding.checkInSuccessContainer.visibility = View.GONE
+        binding.backToClassesButton.visibility = View.GONE
 
         val chosenClass = selectedClass
         binding.nameButtonsContainer.removeAllViews()
@@ -361,6 +381,8 @@ class MainActivity : ComponentActivity() {
         }
 
         val children = simulatedDatabase.filter { !it.served && it.clazz == chosenClass }
+        val childButtonHeight = (binding.childStepContainer.height.takeIf { it > 0 }
+            ?: resources.displayMetrics.heightPixels) / 5
 
         children.forEach { child ->
             val button = MaterialButton(this).apply {
@@ -370,12 +392,12 @@ class MainActivity : ComponentActivity() {
                 setPadding(24, 24, 24, 24)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    childButtonHeight
                 ).apply {
-                    topMargin = 14
+                    topMargin = 12
                 }
                 setOnClickListener {
-                    if (activeOrder == null) {
+                    if (activeOrder == null && !showWaitingOverlayAfterConfirm) {
                         activeOrder = child
                         childScreen = ChildScreen.SUCCESS
                         renderAppContent()
