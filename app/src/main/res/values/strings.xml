@@ -34,7 +34,6 @@
     <string name="confirm_end_service_message">This will delete all child check-in records (name, class, school) for today. Continue?</string>
     <string name="cancel">Cancel</string>
     <string name="service_reset_done">Service ended and today’s records were deleted.</string>
-    <string name="upload_dummy_roster">Upload dummy roster to Firebase</string>
     <string name="firebase_seed_success">Dummy roster uploaded to Firebase.</string>
     <string name="firebase_seed_failed">Could not upload dummy roster to Firebase.</string>
     <string name="firebase_load_failed">Could not load roster from Firebase.</string>

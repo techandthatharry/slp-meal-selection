@@ -334,20 +334,20 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/endServiceButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:layout_gravity="end"
                             android:layout_marginTop="12dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="40dp"
+                            android:minWidth="0dp"
+                            android:paddingHorizontal="12dp"
                             android:backgroundTint="#D32F2F"
                             android:text="@string/end_service"
                             android:textAllCaps="false"
-                            android:textColor="@color/white" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/uploadDummyRosterButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:text="@string/upload_dummy_roster" />
+                            android:textColor="@color/white"
+                            android:textSize="12sp" />
 
                         <TextView
                             android:id="@+id/firebaseStatusText"

@@ -91,11 +91,6 @@ class MainActivity : ComponentActivity() {
             renderAppContent()
         }
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
-        binding.uploadDummyRosterButton.setOnClickListener {
-            firebaseStatusMessage = "Uploading dummy roster to Firebase..."
-            renderKitchenView()
-            seedFirestoreFromInitialData(force = true)
-        }
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
             selectedClass = null
@@ -184,7 +179,6 @@ class MainActivity : ComponentActivity() {
     private fun setupKeyboardSafeLoginScroll() {
         val rootView = binding.root
         val setupContainer = binding.setupContainer
-        val loginFields = listOf(binding.usernameInput, binding.passwordInput, binding.loginButton)
 
         rootView.viewTreeObserver.addOnGlobalLayoutListener {
             val rect = Rect()
@@ -192,10 +186,17 @@ class MainActivity : ComponentActivity() {
             val keyboardHeight = rootView.height - rect.bottom
             val keyboardVisible = keyboardHeight > rootView.height * 0.15
 
-            if (!keyboardVisible || setupContainer.visibility != View.VISIBLE) return@addOnGlobalLayoutListener
+            if (setupContainer.visibility != View.VISIBLE) return@addOnGlobalLayoutListener
 
-            val focused = currentFocus ?: return@addOnGlobalLayoutListener
-            if (loginFields.none { it.id == focused.id }) return@addOnGlobalLayoutListener
+            val extraBottomPadding = if (keyboardVisible) keyboardHeight + 24 else 24
+            binding.setupFormContainer.setPadding(
+                binding.setupFormContainer.paddingLeft,
+                binding.setupFormContainer.paddingTop,
+                binding.setupFormContainer.paddingRight,
+                extraBottomPadding
+            )
+
+            if (!keyboardVisible) return@addOnGlobalLayoutListener
 
             setupContainer.post {
                 setupContainer.smoothScrollTo(0, binding.loginButton.bottom)
@@ -207,7 +208,7 @@ class MainActivity : ComponentActivity() {
         childRecordsCollection.get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot.isEmpty) {
-                    seedFirestoreFromInitialData(force = false)
+                    seedFirestoreFromInitialData()
                     return@addOnSuccessListener
                 }
 
@@ -232,13 +233,8 @@ class MainActivity : ComponentActivity() {
             }
     }
 
-    private fun seedFirestoreFromInitialData(force: Boolean) {
+    private fun seedFirestoreFromInitialData() {
         val currentSchool = binding.initialSchoolSpinner.selectedItem?.toString().orEmpty()
-
-        if (force) {
-            simulatedDatabase.clear()
-            simulatedDatabase.addAll(initialDummyData)
-        }
 
         val batch = firestore.batch()
         initialDummyData.forEach { entry ->
@@ -251,22 +247,23 @@ class MainActivity : ComponentActivity() {
             batch.set(childRecordsCollection.document(documentId), record)
         }
 
-        batch.commit().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
+        batch.commit()
+            .addOnSuccessListener {
                 val successMessage = getString(R.string.firebase_seed_success)
                 firebaseStatusMessage = successMessage
                 Toast.makeText(this, successMessage, Toast.LENGTH_LONG).show()
                 loadChildRecordsFromFirestore()
-            } else {
+                renderKitchenView()
+            }
+            .addOnFailureListener { error ->
                 val failureMessage = getString(
                     R.string.firebase_seed_failed_with_reason,
-                    task.exception?.message ?: "unknown"
+                    error.message ?: "unknown"
                 )
                 firebaseStatusMessage = failureMessage
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                renderKitchenView()
             }
-            renderKitchenView()
-        }
     }
 
     private fun confirmAndEndService() {
