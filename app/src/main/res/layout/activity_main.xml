@@ -331,6 +331,16 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
                             android:text="@string/start_service" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/endServiceButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:backgroundTint="#D32F2F"
+                            android:text="@string/end_service"
+                            android:textAllCaps="false"
+                            android:textColor="@color/white" />
                     </LinearLayout>
 
                     <LinearLayout

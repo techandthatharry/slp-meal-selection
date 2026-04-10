@@ -1,17 +1,21 @@
 package com.techandthat.slpmealselection
 
 import android.graphics.BitmapFactory
-import android.os.Bundle
 import android.graphics.Rect
+import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.RadioButton
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.widget.NestedScrollView
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FirebaseFirestore
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import java.io.IOException
 
@@ -44,6 +48,9 @@ class MainActivity : ComponentActivity() {
         var served: Boolean = false
     )
 
+    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
+    private val childRecordsCollection: CollectionReference by lazy { firestore.collection("childRecords") }
+
     private val simulatedDatabase = mutableListOf(
         MealEntry("Liam Smith", "Reception", "Tomato Pasta"),
         MealEntry("Emma Jones", "Reception", "Fish & Chips"),
@@ -71,6 +78,7 @@ class MainActivity : ComponentActivity() {
         setupSchoolSpinners()
         setupKeyboardSafeLoginScroll()
         loadBrandAssets()
+        loadChildRecordsFromFirestore()
         showSplashThenSetup()
 
         binding.loginButton.setOnClickListener { handleLogin() }
@@ -78,6 +86,7 @@ class MainActivity : ComponentActivity() {
             serviceStarted = true
             renderAppContent()
         }
+        binding.endServiceButton.setOnClickListener { confirmAndEndService() }
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
             selectedClass = null
@@ -185,6 +194,67 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun loadChildRecordsFromFirestore() {
+        childRecordsCollection.get().addOnSuccessListener { snapshot ->
+            if (snapshot.isEmpty) {
+                seedFirestoreFromInitialData()
+                return@addOnSuccessListener
+            }
+
+            val records = snapshot.documents.mapNotNull { doc ->
+                val childName = doc.getString("childName")
+                val className = doc.getString("className")
+                if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
+                MealEntry(childName, className, "Meal")
+            }
+
+            simulatedDatabase.clear()
+            simulatedDatabase.addAll(records)
+            renderAppContent()
+        }
+    }
+
+    private fun seedFirestoreFromInitialData() {
+        val currentSchool = binding.initialSchoolSpinner.selectedItem?.toString().orEmpty()
+        simulatedDatabase.forEach { entry ->
+            val record = mapOf(
+                "childName" to entry.name,
+                "className" to entry.clazz,
+                "schoolName" to currentSchool
+            )
+            childRecordsCollection.add(record)
+        }
+    }
+
+    private fun confirmAndEndService() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.confirm_end_service_title))
+            .setMessage(getString(R.string.confirm_end_service_message))
+            .setNegativeButton(getString(R.string.cancel), null)
+            .setPositiveButton(getString(R.string.end_service)) { _, _ ->
+                endServiceAndDeleteRecords()
+            }
+            .show()
+    }
+
+    private fun endServiceAndDeleteRecords() {
+        childRecordsCollection.get().addOnSuccessListener { snapshot ->
+            val batch = firestore.batch()
+            snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+            batch.commit().addOnSuccessListener {
+                simulatedDatabase.clear()
+                activeOrder = null
+                selectedClass = null
+                showWaitingOverlayAfterConfirm = false
+                serviceStarted = false
+                mealTimeStarted = false
+                childScreen = ChildScreen.IDLE
+                renderAppContent()
+                Toast.makeText(this, getString(R.string.service_reset_done), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun handleLogin() {
         val tabletType = resolveTabletType() ?: run {
             showSetupError(getString(R.string.select_tablet_type_error))
@@ -279,6 +349,7 @@ class MainActivity : ComponentActivity() {
             )
         )
         binding.startServiceButton.isEnabled = !serviceStarted
+        binding.endServiceButton.isEnabled = serviceStarted || simulatedDatabase.isNotEmpty() || activeOrder != null
 
         if (serviceStarted) {
             binding.kitchenContent.removeView(binding.prepListContainer)

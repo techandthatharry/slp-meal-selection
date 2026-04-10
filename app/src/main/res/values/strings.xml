@@ -29,6 +29,11 @@
     <string name="powered_by">Powered by</string>
     <string name="back_to_setup">Change tablet mode</string>
     <string name="start_service">Start Service</string>
+    <string name="end_service">End today’s service</string>
+    <string name="confirm_end_service_title">End service?</string>
+    <string name="confirm_end_service_message">This will delete all child check-in records (name, class, school) for today. Continue?</string>
+    <string name="cancel">Cancel</string>
+    <string name="service_reset_done">Service ended and today’s records were deleted.</string>
     <string name="service_status_started">Service is live. Children can check in now.</string>
     <string name="service_status_not_started">Service not started. Press Start Service to enable child check-in.</string>
     <string name="child_waiting_for_service">Waiting for kitchen to start service.</string>

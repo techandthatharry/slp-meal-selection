@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.techandthat.slpmealselection" />
+                  <option name="mobileSdkAppId" value="1:21912913880:android:02aa016110d5b65be394ad" />
+                  <option name="projectId" value="slp-meal-selection" />
+                  <option name="projectNumber" value="21912913880" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
