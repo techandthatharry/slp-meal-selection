@@ -18,12 +18,25 @@ fun renderClassSelectionStep(
     binding.checkInSuccessContainer.visibility = android.view.View.GONE
 
     val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
-    binding.classButtonsContainer.removeAllViews()
 
     val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.classSelectionContainer.measuredHeight.takeIf { it > 0 }
-        ?: context.resources.displayMetrics.heightPixels
+
+    if (containerHeight == null) {
+        binding.classSelectionContainer.post {
+            renderClassSelectionStep(
+                context = context,
+                binding = binding,
+                simulatedDatabase = simulatedDatabase,
+                showWaitingOverlayAfterConfirm = showWaitingOverlayAfterConfirm,
+                onClassSelected = onClassSelected
+            )
+        }
+        return
+    }
+
+    binding.classButtonsContainer.removeAllViews()
     val classButtonHeight = containerHeight / 4
 
     classes.forEach { className ->
