@@ -10,6 +10,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.functions.HttpsCallableResult
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
@@ -154,6 +155,48 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun fetchStudentsFromArbor() {
+        ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
+    }
+
+    private fun ensureAuthenticatedThenSync(retryOnUnauthenticated: Boolean) {
+        val currentUser = firebaseAuth.currentUser
+        if (currentUser == null) {
+            firebaseAuth.signInAnonymously()
+                .addOnSuccessListener {
+                    runArborSyncCallable(retryOnUnauthenticated)
+                }
+                .addOnFailureListener { error ->
+                    val failureMessage = getString(
+                        R.string.firebase_auth_failed_with_reason,
+                        error.message ?: "unknown"
+                    )
+                    Log.e("ArborIntegration", "Anonymous auth failed before sync", error)
+                    Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                }
+            return
+        }
+
+        currentUser.getIdToken(true)
+            .addOnSuccessListener {
+                runArborSyncCallable(retryOnUnauthenticated)
+            }
+            .addOnFailureListener { error ->
+                Log.e("ArborIntegration", "Token refresh failed before sync", error)
+                firebaseAuth.signInAnonymously()
+                    .addOnSuccessListener {
+                        runArborSyncCallable(retryOnUnauthenticated)
+                    }
+                    .addOnFailureListener { authError ->
+                        val failureMessage = getString(
+                            R.string.firebase_auth_failed_with_reason,
+                            authError.message ?: "unknown"
+                        )
+                        Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                    }
+            }
+    }
+
+    private fun runArborSyncCallable(retryOnUnauthenticated: Boolean) {
         functions
             .getHttpsCallable("getArborStudents")
             .call(mapOf("schoolName" to selectedSchool))
@@ -165,6 +208,15 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Arbor students synced to Firebase", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { exception: Exception ->
+                val functionsException = exception as? FirebaseFunctionsException
+                val isUnauthenticated = functionsException?.code == FirebaseFunctionsException.Code.UNAUTHENTICATED
+                if (retryOnUnauthenticated && isUnauthenticated) {
+                    Log.w("ArborIntegration", "Callable returned UNAUTHENTICATED, retrying with fresh auth")
+                    firebaseAuth.signOut()
+                    ensureAuthenticatedThenSync(retryOnUnauthenticated = false)
+                    return@addOnFailureListener
+                }
+
                 Log.e("ArborIntegration", "Failed to fetch students", exception)
                 Toast.makeText(this, "Failed to sync students from Arbor", Toast.LENGTH_LONG).show()
             }

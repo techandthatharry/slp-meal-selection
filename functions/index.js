@@ -90,7 +90,11 @@ function mapArborStudent(rawStudent) {
 }
 
 exports.getArborStudents = onCall(
-    {region: "europe-west2"},
+    {
+      region: "europe-west2",
+      invoker: "public",
+      enforceAppCheck: false,
+    },
     async (request) => {
       const appUsername =
         process.env.ARBOR_APP_USERNAME || "deven@techandthat.com";
