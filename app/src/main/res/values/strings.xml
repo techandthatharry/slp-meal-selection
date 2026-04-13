@@ -13,6 +13,7 @@
     <string name="username_hint">Enter username</string>
     <string name="password_hint">Enter password</string>
     <string name="continue_label">Continue</string>
+    <string name="setup_subtitle">Get this tablet ready in under 30 seconds</string>
     <string name="select_tablet_type_error">Please select tablet type.</string>
     <string name="invalid_credentials_error">Invalid credentials for selected tablet type.</string>
     <string name="school_selected">School: %1$s</string>
@@ -54,4 +55,9 @@
     <string name="oops">Oops</string>
     <string name="waiting_for_kitchen_overlay">Waiting for the kitchen</string>
     <string name="meal_served">Meal served</string>
+    <string name="load_meals_button_with_icon">🍽️  Load today’s meals</string>
+    <string name="start_service_button_with_icon">🚀  Start Service</string>
+    <string name="change_school_with_icon">🏫  Change school</string>
+    <string name="end_service_with_icon">🛑  End today’s service</string>
+    <string name="meals_to_prepare_with_icon">🍽️ Meals to prepare</string>
 </resources>

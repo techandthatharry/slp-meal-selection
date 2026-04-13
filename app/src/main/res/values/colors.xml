@@ -5,4 +5,14 @@
     <color name="slp_blue">#0E76BD</color>
     <color name="child_green">#2E7D32</color>
     <color name="child_orange">#EF6C00</color>
+
+    <color name="kitchen_bg">#F2F4F7</color>
+    <color name="kitchen_surface">#FFFFFF</color>
+    <color name="kitchen_primary">#1D3557</color>
+    <color name="kitchen_accent">#457B9D</color>
+    <color name="kitchen_success">#2A9D8F</color>
+    <color name="kitchen_warning">#E9C46A</color>
+    <color name="kitchen_danger">#E63946</color>
+    <color name="kitchen_text_primary">#102A43</color>
+    <color name="kitchen_text_secondary">#486581</color>
 </resources>
