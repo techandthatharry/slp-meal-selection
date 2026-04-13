@@ -94,7 +94,84 @@ function extractStudents(payload) {
  * @param {Object} rawStudent Raw Arbor student object.
  * @return {{childName: string, className: string}|null} Mapped record.
  */
-function mapArborStudent(rawStudent) {
+/**
+ * Extracts dietary requirements from an Arbor student payload.
+ *
+ * @param {Object} rawStudent Raw Arbor student object.
+ * @return {Array<string>} Dietary requirement labels.
+ */
+function extractDietaryRequirements(rawStudent) {
+  const value =
+    firstDefined(
+        rawStudent && rawStudent.dietary_requirements,
+        rawStudent && rawStudent.dietaryRequirements,
+        rawStudent && rawStudent.dietary_needs,
+        rawStudent && rawStudent.dietaryNeeds,
+        rawStudent && rawStudent.allergies,
+    );
+
+  if (Array.isArray(value)) {
+    return value
+        .map((item) => {
+          if (typeof item === "string") return item.trim();
+          if (item && typeof item === "object") {
+            return firstDefined(item.name, item.label, item.description);
+          }
+          return null;
+        })
+        .filter((item) => !!item);
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    return [value.trim()];
+  }
+
+  return [];
+}
+
+/**
+ * Returns a fallback meal option for demo data completeness.
+ *
+ * @param {number} index Student index.
+ * @return {string} Meal label.
+ */
+function fallbackMealSelection(index) {
+  const meals = [
+    "Tomato Pasta",
+    "Fish & Chips",
+    "Jacket Potato",
+    "Vegetable Curry",
+    "Chicken Wrap",
+  ];
+  return meals[index % meals.length];
+}
+
+/**
+ * Returns fallback dietary requirements for demo data completeness.
+ *
+ * @param {number} index Student index.
+ * @return {Array<string>} Dietary requirement labels.
+ */
+function fallbackDietaryRequirements(index) {
+  const requirements = [
+    ["No known dietary requirements"],
+    ["Nut allergy"],
+    ["Vegetarian"],
+    ["Dairy-free"],
+    ["Gluten-free"],
+  ];
+  return requirements[index % requirements.length];
+}
+
+/**
+ * Maps one Arbor student object to app Firestore record shape.
+ *
+ * @param {Object} rawStudent Raw Arbor student object.
+ * @param {number} index Student index for fallback values.
+ * @return {{childName: string, className: string, mealSelected: string,
+ * dietaryRequirements: Array<string>}|null} Mapped record.
+ */
+function mapArborStudent(rawStudent, index) {
   const person = rawStudent && rawStudent.person;
   const firstName = firstDefined(
       rawStudent && rawStudent.first_name,
@@ -129,9 +206,24 @@ function mapArborStudent(rawStudent) {
 
   if (!fullName) return null;
 
+  const mealSelected = firstDefined(
+      rawStudent && rawStudent.meal_selected,
+      rawStudent && rawStudent.mealSelected,
+      rawStudent && rawStudent.meal_choice,
+      rawStudent && rawStudent.mealChoice,
+      fallbackMealSelection(index),
+  );
+
+  const dietaryRequirements = extractDietaryRequirements(rawStudent);
+  const finalDietaryRequirements = dietaryRequirements.length > 0 ?
+    dietaryRequirements :
+    fallbackDietaryRequirements(index);
+
   return {
     childName: String(fullName).trim(),
     className: String(className).trim(),
+    mealSelected: String(mealSelected).trim(),
+    dietaryRequirements: finalDietaryRequirements,
   };
 }
 
@@ -249,7 +341,7 @@ exports.getArborStudents = onCall(
         }
 
         const students = detailedStudents
-            .map(mapArborStudent)
+            .map((student, index) => mapArborStudent(student, index))
             .filter((student) => student !== null);
 
         const studentRecords = students.map((student, index) => {
@@ -261,6 +353,8 @@ exports.getArborStudents = onCall(
             childName: student.childName,
             className: student.className,
             schoolName,
+            mealSelected: student.mealSelected,
+            dietaryRequirements: student.dietaryRequirements,
             source: "arbor",
           };
         });
@@ -275,6 +369,8 @@ exports.getArborStudents = onCall(
               className: record.className,
               schoolName: record.schoolName,
               source: record.source,
+              mealSelected: record.mealSelected,
+              dietaryRequirements: record.dietaryRequirements,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }, {merge: true});
           });

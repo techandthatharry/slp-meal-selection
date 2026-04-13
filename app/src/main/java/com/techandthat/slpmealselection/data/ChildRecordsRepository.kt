@@ -72,7 +72,9 @@ class ChildRecordsRepository(
         val childName: String,
         val className: String,
         val schoolName: String,
-        val source: String
+        val source: String,
+        val mealSelected: String,
+        val dietaryRequirements: List<String>
     )
 
     fun upsertArborRecords(
@@ -93,7 +95,9 @@ class ChildRecordsRepository(
                     "childName" to record.childName,
                     "className" to record.className,
                     "schoolName" to record.schoolName,
-                    "source" to record.source
+                    "source" to record.source,
+                    "mealSelected" to record.mealSelected,
+                    "dietaryRequirements" to record.dietaryRequirements
                 )
             )
         }

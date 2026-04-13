@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
     )
 
     private val fallbackMealByChild = initialDummyData.associate { "${it.name}|${it.clazz}" to it.meal }
-    private val simulatedDatabase = initialDummyData.toMutableList()
+    private val simulatedDatabase = mutableListOf<MealEntry>()
 
     private var selectedTabletType: TabletType? = null
     private var selectedSchool: String = schools.first()
@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
     private var activeOrder: MealEntry? = null
     private var showWaitingOverlayAfterConfirm = false
     private var firebaseStatusMessage: String? = null
+    private var isLoadingMeals = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,7 +85,9 @@ class MainActivity : ComponentActivity() {
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
         binding.changeSchoolButton.setOnClickListener { showChangeSchoolDialog() }
         binding.loadTodaysMealsButton.setOnClickListener {
-            fetchStudentsFromArbor()
+            if (!isLoadingMeals) {
+                fetchStudentsFromArbor()
+            }
         }
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
@@ -146,6 +149,7 @@ class MainActivity : ComponentActivity() {
                     R.string.firebase_auth_failed_with_reason,
                     error.message ?: "unknown"
                 )
+                isLoadingMeals = false
                 firebaseStatusMessage = failureMessage
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderAppContent()
@@ -154,6 +158,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun fetchStudentsFromArbor() {
+        isLoadingMeals = true
+        firebaseStatusMessage = "Loading today's meals..."
+        renderKitchenView()
         ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
     }
 
@@ -201,7 +208,7 @@ class MainActivity : ComponentActivity() {
             .call(
                 mapOf(
                     "schoolName" to selectedSchool,
-                    "maxRecords" to 1
+                    "maxRecords" to 10
                 )
             )
             .addOnSuccessListener { result: HttpsCallableResult ->
@@ -218,6 +225,11 @@ class MainActivity : ComponentActivity() {
                         val className = student["className"] as? String
                         val schoolName = student["schoolName"] as? String
                         val source = student["source"] as? String ?: "arbor"
+                        val mealSelected = student["mealSelected"] as? String ?: "Not selected"
+                        @Suppress("UNCHECKED_CAST")
+                        val dietaryRequirements = (student["dietaryRequirements"] as? List<Any>)
+                            ?.mapNotNull { it as? String }
+                            ?: emptyList()
                         if (documentId.isNullOrBlank() || childName.isNullOrBlank() || className.isNullOrBlank() || schoolName.isNullOrBlank()) {
                             null
                         } else {
@@ -226,7 +238,9 @@ class MainActivity : ComponentActivity() {
                                 childName = childName,
                                 className = className,
                                 schoolName = schoolName,
-                                source = source
+                                source = source,
+                                mealSelected = mealSelected,
+                                dietaryRequirements = dietaryRequirements
                             )
                         }
                     }
@@ -235,24 +249,39 @@ class MainActivity : ComponentActivity() {
                         records = mapped,
                         onSuccess = {
                             loadChildRecordsFromFirestore()
+                            isLoadingMeals = false
+                            val rateLimited = data.get("rateLimited") as? Boolean ?: false
+                            val message = data.get("message") as? String
+                            val toastText = if (rateLimited) {
+                                message ?: "Arbor rate limited. Please retry in a minute."
+                            } else {
+                                message ?: "Arbor students synced to Firebase"
+                            }
+                            firebaseStatusMessage = null
+                            renderKitchenView()
+                            Toast.makeText(this, toastText, Toast.LENGTH_SHORT).show()
                         },
                         onFailure = { error ->
                             Log.e("ArborIntegration", "Client-side Firestore upsert failed", error)
+                            isLoadingMeals = false
+                            firebaseStatusMessage = "Failed to save meals locally"
                             loadChildRecordsFromFirestore()
+                            renderKitchenView()
                         }
                     )
                 } else {
+                    isLoadingMeals = false
+                    val rateLimited = data?.get("rateLimited") as? Boolean ?: false
+                    val message = data?.get("message") as? String
+                    firebaseStatusMessage = if (rateLimited) {
+                        message ?: "Arbor rate limited. Please retry in a minute."
+                    } else {
+                        null
+                    }
                     loadChildRecordsFromFirestore()
+                    renderKitchenView()
+                    Toast.makeText(this, message ?: "No meals returned", Toast.LENGTH_SHORT).show()
                 }
-
-                val rateLimited = data?.get("rateLimited") as? Boolean ?: false
-                val message = data?.get("message") as? String
-                val toastText = if (rateLimited) {
-                    message ?: "Arbor rate limited. Please retry in a minute."
-                } else {
-                    message ?: "Arbor students synced to Firebase"
-                }
-                Toast.makeText(this, toastText, Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { exception: Exception ->
                 val functionsException = exception as? FirebaseFunctionsException
@@ -264,6 +293,9 @@ class MainActivity : ComponentActivity() {
                     return@addOnFailureListener
                 }
 
+                isLoadingMeals = false
+                firebaseStatusMessage = "Failed to sync meals"
+                renderKitchenView()
                 Log.e("ArborIntegration", "Failed to fetch students", exception)
                 Toast.makeText(this, "Failed to sync students from Arbor", Toast.LENGTH_LONG).show()
             }
@@ -448,7 +480,8 @@ class MainActivity : ComponentActivity() {
         binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.startServiceButton.isEnabled = !serviceStarted
-        binding.loadTodaysMealsButton.isEnabled = !serviceStarted
+        binding.loadTodaysMealsButton.isEnabled = !serviceStarted && !isLoadingMeals
+        binding.loadTodaysMealsButton.text = if (isLoadingMeals) "Loading meals..." else "Load Today's Meals"
         binding.changeSchoolButton.visibility = View.VISIBLE
         binding.endServiceButton.visibility = View.VISIBLE
         binding.changeSchoolButton.isEnabled = !serviceStarted
@@ -466,7 +499,9 @@ class MainActivity : ComponentActivity() {
         binding.prepSummary.text = if (volumes.isEmpty()) {
             getString(R.string.all_meals_served)
         } else {
-            volumes.entries.joinToString(separator = "\n") { (meal, count) -> "• $meal: $count" }
+            volumes.entries
+                .sortedBy { it.key }
+                .joinToString(separator = "\n") { (meal, count) -> "$count x $meal" }
         }
 
         if (serviceStarted && activeOrder != null) {
