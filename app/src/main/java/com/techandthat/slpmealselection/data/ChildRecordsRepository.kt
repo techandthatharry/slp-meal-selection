@@ -66,4 +66,40 @@ class ChildRecordsRepository(
             }
             .addOnFailureListener(onFailure)
     }
+
+    data class ArborStudentRecord(
+        val documentId: String,
+        val childName: String,
+        val className: String,
+        val schoolName: String,
+        val source: String
+    )
+
+    fun upsertArborRecords(
+        records: List<ArborStudentRecord>,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        if (records.isEmpty()) {
+            onSuccess()
+            return
+        }
+
+        val batch = firestore.batch()
+        records.forEach { record ->
+            batch.set(
+                childRecordsCollection.document(record.documentId),
+                mapOf(
+                    "childName" to record.childName,
+                    "className" to record.className,
+                    "schoolName" to record.schoolName,
+                    "source" to record.source
+                )
+            )
+        }
+
+        batch.commit()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener(onFailure)
+    }
 }

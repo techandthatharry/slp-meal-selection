@@ -36,6 +36,18 @@ function toSlug(value) {
 }
 
 /**
+ * Extract object values as row objects.
+ *
+ * @param {*} value Candidate object.
+ * @return {Array<Object>} Extracted row objects.
+ */
+function objectValuesAsRows(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.values(value)
+      .filter((item) => item && typeof item === "object");
+}
+
+/**
  * Extracts the student list from possible Arbor response shapes.
  *
  * @param {*} payload Arbor JSON payload.
@@ -43,9 +55,36 @@ function toSlug(value) {
  */
 function extractStudents(payload) {
   if (Array.isArray(payload)) return payload;
-  if (payload && Array.isArray(payload.data)) return payload.data;
-  if (payload && Array.isArray(payload.results)) return payload.results;
-  if (payload && Array.isArray(payload.students)) return payload.students;
+  if (!payload || typeof payload !== "object") return [];
+
+  if (Array.isArray(payload.data)) return payload.data;
+  if (payload.data && Array.isArray(payload.data.students)) {
+    return payload.data.students;
+  }
+
+  if (Array.isArray(payload.results)) return payload.results;
+  if (Array.isArray(payload.students)) return payload.students;
+
+  if (payload.students && payload.students.data &&
+      Array.isArray(payload.students.data)) {
+    return payload.students.data;
+  }
+
+  const studentObjectRows = objectValuesAsRows(payload.students);
+  if (studentObjectRows.length > 0) return studentObjectRows;
+
+  if (payload.response && Array.isArray(payload.response.students)) {
+    return payload.response.students;
+  }
+
+  if (payload.student && typeof payload.student === "object") {
+    return [payload.student];
+  }
+
+  if (payload.data && typeof payload.data === "object") {
+    return objectValuesAsRows(payload.data);
+  }
+
   return [];
 }
 
@@ -56,18 +95,24 @@ function extractStudents(payload) {
  * @return {{childName: string, className: string}|null} Mapped record.
  */
 function mapArborStudent(rawStudent) {
+  const person = rawStudent && rawStudent.person;
   const firstName = firstDefined(
       rawStudent && rawStudent.first_name,
       rawStudent && rawStudent.firstName,
+      person && person.preferredFirstName,
+      person && person.legalFirstName,
   );
   const lastName = firstDefined(
       rawStudent && rawStudent.last_name,
       rawStudent && rawStudent.lastName,
+      person && person.preferredLastName,
+      person && person.legalLastName,
   );
   const fullName = firstDefined(
       rawStudent && rawStudent.full_name,
       rawStudent && rawStudent.name,
       rawStudent && rawStudent.student_name,
+      person && person.fullName,
       [firstName, lastName].filter(Boolean).join(" ").trim(),
   );
 
@@ -78,6 +123,7 @@ function mapArborStudent(rawStudent) {
       rawStudent && rawStudent.className,
       rawStudent && rawStudent.year_group_name,
       rawStudent && rawStudent.year_group,
+      rawStudent && rawStudent.registrationForm,
       "Unknown",
   );
 
@@ -94,6 +140,7 @@ exports.getArborStudents = onCall(
       region: "europe-west2",
       invoker: "public",
       enforceAppCheck: false,
+      timeoutSeconds: 120,
     },
     async (request) => {
       const appUsername =
@@ -105,6 +152,13 @@ exports.getArborStudents = onCall(
         typeof request.data.schoolName === "string" &&
         request.data.schoolName.trim()
       ) || "Arbor Sandbox";
+      const requestedMaxRecords = Number(
+          request.data && request.data.maxRecords,
+      );
+      const maxRecords =
+        Number.isFinite(requestedMaxRecords) && requestedMaxRecords > 0 ?
+          Math.min(Math.floor(requestedMaxRecords), 50) :
+          1;
 
       if (!appUsername || !appPassword || appPassword === "YOUR_APP_PASSWORD") {
         throw new HttpsError(
@@ -128,54 +182,152 @@ exports.getArborStudents = onCall(
         });
 
         if (!response.ok) {
-          throw new HttpsError(
-              "internal",
-              `Arbor API error: HTTP ${response.status}`,
-          );
+          const rateLimited = response.status === 429;
+          logger.warn("Arbor API request failed", {
+            status: response.status,
+            rateLimited,
+          });
+          return {
+            success: false,
+            rateLimited,
+            fetched: 0,
+            written: 0,
+            schoolName,
+            statusCode: response.status,
+            message: rateLimited ?
+              "Arbor API rate limit reached. Please retry in a minute." :
+              `Arbor API returned HTTP ${response.status}`,
+          };
         }
 
         const jsonResponse = await response.json();
-        const students = extractStudents(jsonResponse)
+        const rawStudents = extractStudents(jsonResponse);
+
+        const detailedStudents = [];
+        let rateLimitedDuringDetails = false;
+
+        for (let i = 0; i < rawStudents.length; i++) {
+          const student = rawStudents[i];
+          if (student && student.person) {
+            detailedStudents.push(student);
+            continue;
+          }
+
+          const href = student && student.href;
+          if (!href) continue;
+
+          try {
+            const detailResponse = await fetch(
+                `https://api-sandbox2.uk.arbor.sc${href}?format=json`,
+                {
+                  method: "GET",
+                  headers: {
+                    "Authorization": `Basic ${credentials}`,
+                    "Accept": "application/json",
+                  },
+                },
+            );
+
+            if (!detailResponse.ok) {
+              if (detailResponse.status === 429) {
+                rateLimitedDuringDetails = true;
+                break;
+              }
+              continue;
+            }
+            const detailJson = await detailResponse.json();
+            const detailStudent = extractStudents(detailJson)[0];
+            if (detailStudent) detailedStudents.push(detailStudent);
+          } catch (detailError) {
+            logger.warn("Failed to fetch Arbor student detail", {
+              href,
+              error: detailError.message || "unknown",
+            });
+          }
+
+          if (i >= maxRecords - 1) break;
+        }
+
+        const students = detailedStudents
             .map(mapArborStudent)
             .filter((student) => student !== null);
 
-        const batch = db.batch();
-        students.forEach((student, index) => {
+        const studentRecords = students.map((student, index) => {
           const slugClass = toSlug(student.className);
           const slugName = toSlug(student.childName);
           const docId = `${slugClass}_${slugName}` || `student_${index}`;
-          const ref = db.collection("childRecords").doc(docId);
-          batch.set(ref, {
+          return {
+            documentId: docId,
             childName: student.childName,
             className: student.className,
             schoolName,
             source: "arbor",
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, {merge: true});
+          };
         });
 
-        if (students.length > 0) {
-          await batch.commit();
+        let writtenCount = 0;
+        try {
+          const batch = db.batch();
+          studentRecords.forEach((record) => {
+            const ref = db.collection("childRecords").doc(record.documentId);
+            batch.set(ref, {
+              childName: record.childName,
+              className: record.className,
+              schoolName: record.schoolName,
+              source: record.source,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, {merge: true});
+          });
+
+          if (studentRecords.length > 0) {
+            await batch.commit();
+            writtenCount = studentRecords.length;
+          }
+        } catch (writeError) {
+          logger.error("Firestore write failed inside function", {
+            message: writeError && writeError.message ?
+              writeError.message : "unknown",
+          });
         }
 
         logger.info("Arbor sync complete", {
           fetched: students.length,
-          written: students.length,
+          written: writtenCount,
           schoolName,
+          rateLimitedDuringDetails,
+          responseTopLevelKeys: Object.keys(jsonResponse || {}),
+          maxRecords,
+          sampleStudentKeys:
+            students.length > 0 ? Object.keys(students[0]) : [],
         });
 
         return {
           success: true,
           fetched: students.length,
-          written: students.length,
+          written: writtenCount,
           schoolName,
+          rateLimitedDuringDetails,
+          responseTopLevelKeys: Object.keys(jsonResponse || {}),
+          maxRecords,
+          students: studentRecords,
+          message: rateLimitedDuringDetails ?
+            "Partially synced due to Arbor rate limiting." :
+            "Arbor sync completed.",
         };
       } catch (error) {
-        logger.error("Error syncing students from Arbor", error);
-        if (error instanceof HttpsError) {
-          throw error;
-        }
-        throw new HttpsError("internal", "Unable to connect to Arbor API");
+        logger.error("Error syncing students from Arbor", {
+          message: error && error.message ? error.message : "unknown",
+          stack: error && error.stack ? error.stack : "no-stack",
+        });
+
+        return {
+          success: false,
+          fetched: 0,
+          written: 0,
+          schoolName,
+          message: "Arbor sync failed. Please retry in a minute.",
+          errorMessage: error && error.message ? error.message : "unknown",
+        };
       }
     },
 );

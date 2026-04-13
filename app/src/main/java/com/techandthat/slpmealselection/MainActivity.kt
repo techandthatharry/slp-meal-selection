@@ -198,13 +198,61 @@ class MainActivity : ComponentActivity() {
     private fun runArborSyncCallable(retryOnUnauthenticated: Boolean) {
         functions
             .getHttpsCallable("getArborStudents")
-            .call(mapOf("schoolName" to selectedSchool))
+            .call(
+                mapOf(
+                    "schoolName" to selectedSchool,
+                    "maxRecords" to 1
+                )
+            )
             .addOnSuccessListener { result: HttpsCallableResult ->
                 @Suppress("UNCHECKED_CAST")
                 val data = result.data as? Map<String, Any>
                 Log.d("ArborIntegration", "Success: $data")
-                loadChildRecordsFromFirestore()
-                Toast.makeText(this, "Arbor students synced to Firebase", Toast.LENGTH_SHORT).show()
+
+                @Suppress("UNCHECKED_CAST")
+                val students = data?.get("students") as? List<Map<String, Any>>
+                if (!students.isNullOrEmpty()) {
+                    val mapped = students.mapNotNull { student ->
+                        val documentId = student["documentId"] as? String
+                        val childName = student["childName"] as? String
+                        val className = student["className"] as? String
+                        val schoolName = student["schoolName"] as? String
+                        val source = student["source"] as? String ?: "arbor"
+                        if (documentId.isNullOrBlank() || childName.isNullOrBlank() || className.isNullOrBlank() || schoolName.isNullOrBlank()) {
+                            null
+                        } else {
+                            ChildRecordsRepository.ArborStudentRecord(
+                                documentId = documentId,
+                                childName = childName,
+                                className = className,
+                                schoolName = schoolName,
+                                source = source
+                            )
+                        }
+                    }
+
+                    repository.upsertArborRecords(
+                        records = mapped,
+                        onSuccess = {
+                            loadChildRecordsFromFirestore()
+                        },
+                        onFailure = { error ->
+                            Log.e("ArborIntegration", "Client-side Firestore upsert failed", error)
+                            loadChildRecordsFromFirestore()
+                        }
+                    )
+                } else {
+                    loadChildRecordsFromFirestore()
+                }
+
+                val rateLimited = data?.get("rateLimited") as? Boolean ?: false
+                val message = data?.get("message") as? String
+                val toastText = if (rateLimited) {
+                    message ?: "Arbor rate limited. Please retry in a minute."
+                } else {
+                    message ?: "Arbor students synced to Firebase"
+                }
+                Toast.makeText(this, toastText, Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { exception: Exception ->
                 val functionsException = exception as? FirebaseFunctionsException
@@ -225,7 +273,8 @@ class MainActivity : ComponentActivity() {
         repository.loadRecords(
             onSuccess = { records ->
                 if (records.isEmpty()) {
-                    seedFirestoreFromInitialData()
+                    simulatedDatabase.clear()
+                    renderAppContent()
                     return@loadRecords
                 }
 
@@ -243,26 +292,6 @@ class MainActivity : ComponentActivity() {
                 firebaseStatusMessage = failureMessage
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderAppContent()
-                renderKitchenView()
-            }
-        )
-    }
-
-    private fun seedFirestoreFromInitialData() {
-        repository.seedInitialData(
-            initialDummyData = initialDummyData,
-            schoolName = selectedSchool,
-            onSuccess = {
-                loadChildRecordsFromFirestore()
-                renderKitchenView()
-            },
-            onFailure = { error ->
-                val failureMessage = getString(
-                    R.string.firebase_seed_failed_with_reason,
-                    error.message ?: "unknown"
-                )
-                firebaseStatusMessage = failureMessage
-                Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderKitchenView()
             }
         )
