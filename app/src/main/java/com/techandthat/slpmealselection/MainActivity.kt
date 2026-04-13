@@ -1,6 +1,7 @@
 package com.techandthat.slpmealselection
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.RadioButton
 import android.widget.Toast
@@ -8,6 +9,8 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.HttpsCallableResult
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import com.techandthat.slpmealselection.model.ChildScreen
@@ -27,6 +30,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var binding: ActivityMainBinding
     private val repository = ChildRecordsRepository()
     private val firebaseAuth by lazy { FirebaseAuth.getInstance() }
+    private val functions: FirebaseFunctions by lazy { FirebaseFunctions.getInstance("europe-west2") }
 
     private val schools = listOf(
         "St Luke's Primary",
@@ -80,7 +84,7 @@ class MainActivity : ComponentActivity() {
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
         binding.changeSchoolButton.setOnClickListener { showChangeSchoolDialog() }
         binding.loadTodaysMealsButton.setOnClickListener {
-            Toast.makeText(this, getString(R.string.load_todays_meals_placeholder), Toast.LENGTH_SHORT).show()
+            fetchStudentsFromArbor()
         }
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
@@ -146,6 +150,23 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
                 renderAppContent()
                 renderKitchenView()
+            }
+    }
+
+    private fun fetchStudentsFromArbor() {
+        functions
+            .getHttpsCallable("getArborStudents")
+            .call()
+            .addOnSuccessListener { result: HttpsCallableResult ->
+                @Suppress("UNCHECKED_CAST")
+                val data = result.data as? Map<String, Any>
+                Log.d("ArborIntegration", "Success: $data")
+                Toast.makeText(this, "Arbor students fetched successfully", Toast.LENGTH_SHORT).show()
+                // TODO: Parse student data and map into your app models/UI state.
+            }
+            .addOnFailureListener { exception: Exception ->
+                Log.e("ArborIntegration", "Failed to fetch students", exception)
+                Toast.makeText(this, "Failed to fetch students from Arbor", Toast.LENGTH_LONG).show()
             }
     }
 
