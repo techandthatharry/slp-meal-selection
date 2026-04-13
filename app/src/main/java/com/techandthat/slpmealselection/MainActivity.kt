@@ -2,8 +2,11 @@ package com.techandthat.slpmealselection
 
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.widget.ImageView
 import android.widget.RadioButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
@@ -12,6 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.functions.HttpsCallableResult
+import java.util.Locale
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import com.techandthat.slpmealselection.model.ChildScreen
@@ -451,7 +455,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun renderKitchenView() {
-        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.slp_blue))
+        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.kitchen_header_bg))
         binding.headerTitle.text = getString(R.string.kitchen_side)
         binding.headerSubtitle.text = getString(R.string.school_selected, selectedSchool)
         binding.contentTitle.text = getString(R.string.kitchen_dashboard_title)
@@ -473,7 +477,7 @@ class MainActivity : ComponentActivity() {
         binding.serviceStatusText.setTextColor(
             ContextCompat.getColor(
                 this,
-                if (serviceStarted) R.color.child_green else R.color.slp_blue
+                if (serviceStarted) R.color.kitchen_success else R.color.kitchen_text_secondary
             )
         )
 
@@ -484,7 +488,7 @@ class MainActivity : ComponentActivity() {
         binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.startServiceButton.isEnabled = !serviceStarted
         binding.loadTodaysMealsButton.isEnabled = !serviceStarted && !isLoadingMeals
-        binding.loadTodaysMealsButton.text = if (isLoadingMeals) "Loading meals..." else "Load Today's Meals"
+        binding.loadTodaysMealsButton.text = if (isLoadingMeals) "Loading meals..." else getString(R.string.load_meals_button_with_icon)
         binding.changeSchoolButton.visibility = View.VISIBLE
         binding.endServiceButton.visibility = View.VISIBLE
         binding.changeSchoolButton.isEnabled = !serviceStarted
@@ -499,13 +503,7 @@ class MainActivity : ComponentActivity() {
 
         val outstandingMeals = simulatedDatabase.filterNot { it.served }
         val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
-        binding.prepSummary.text = if (volumes.isEmpty()) {
-            getString(R.string.all_meals_served)
-        } else {
-            volumes.entries
-                .sortedBy { it.key }
-                .joinToString(separator = "\n") { (meal, count) -> "$count x $meal" }
-        }
+        renderMealPrepRows(volumes)
 
         if (serviceStarted && activeOrder != null) {
             binding.kitchenOrderContainer.visibility = View.VISIBLE
@@ -529,6 +527,47 @@ class MainActivity : ComponentActivity() {
         }
 
         binding.appScrollView.scrollTo(0, 0)
+    }
+
+    private fun renderMealPrepRows(volumes: Map<String, Int>) {
+        binding.prepSummaryContainer.removeAllViews()
+
+        if (volumes.isEmpty()) {
+            val emptyState = TextView(this).apply {
+                text = getString(R.string.all_meals_served)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.meal_count_text))
+                textSize = 20f
+            }
+            binding.prepSummaryContainer.addView(emptyState)
+            return
+        }
+
+        val inflater = LayoutInflater.from(this)
+        volumes.entries
+            .sortedBy { it.key.lowercase(Locale.getDefault()) }
+            .forEach { (mealName, count) ->
+                val row = inflater.inflate(R.layout.item_meal_prep, binding.prepSummaryContainer, false)
+                val iconView = row.findViewById<ImageView>(R.id.mealTypeIcon)
+                val countView = row.findViewById<TextView>(R.id.mealCountText)
+                val nameView = row.findViewById<TextView>(R.id.mealNameText)
+
+                iconView.setImageResource(mealIconFor(mealName))
+                countView.text = getString(R.string.meal_count_format, count)
+                nameView.text = mealName
+                binding.prepSummaryContainer.addView(row)
+            }
+    }
+
+    private fun mealIconFor(mealName: String): Int {
+        val normalized = mealName.lowercase(Locale.getDefault())
+        return when {
+            "wrap" in normalized -> android.R.drawable.ic_menu_crop
+            "fish" in normalized -> android.R.drawable.ic_menu_compass
+            "potato" in normalized -> android.R.drawable.ic_menu_week
+            "pasta" in normalized -> android.R.drawable.ic_menu_sort_by_size
+            "curry" in normalized -> android.R.drawable.ic_menu_manage
+            else -> android.R.drawable.ic_menu_agenda
+        }
     }
 
     private fun renderChildView() {

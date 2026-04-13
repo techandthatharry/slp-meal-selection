@@ -248,8 +248,8 @@
         <LinearLayout
             android:id="@+id/headerBar"
             android:layout_width="match_parent"
-            android:layout_height="84dp"
-            android:background="@color/kitchen_primary"
+            android:layout_height="92dp"
+            android:background="@color/kitchen_header_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="16dp">
@@ -271,16 +271,17 @@
                     android:id="@+id/headerTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/white"
-                    android:textSize="26sp"
+                    android:textColor="@color/meal_name_text"
+                    android:textSize="24sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/headerSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/white"
-                    android:textSize="16sp" />
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/meal_count_text"
+                    android:textSize="14sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -293,42 +294,55 @@
                     android:id="@+id/backToSetupButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="40dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="40dp"
                     android:text="@string/back_to_setup"
-                    android:textColor="@color/white"
-                    app:strokeColor="@color/white" />
+                    android:textAllCaps="false"
+                    android:textColor="@color/meal_name_text"
+                    android:textSize="12sp"
+                    app:strokeColor="#BDBDBD" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/changeSchoolButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="38dp"
+                    android:layout_height="40dp"
                     android:layout_marginStart="8dp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:minHeight="38dp"
+                    android:minHeight="40dp"
                     android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:backgroundTint="@color/kitchen_accent"
+                    android:paddingHorizontal="12dp"
+                    android:backgroundTint="#FFFFFF"
                     android:text="@string/change_school_with_icon"
                     android:textAllCaps="false"
-                    android:textColor="@color/white"
-                    android:textSize="11sp" />
+                    android:textColor="@color/meal_name_text"
+                    android:textSize="12sp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="#BDBDBD" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/endServiceButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="38dp"
+                    android:layout_height="40dp"
                     android:layout_marginStart="8dp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:minHeight="38dp"
+                    android:minHeight="40dp"
                     android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:backgroundTint="@color/kitchen_danger"
+                    android:paddingHorizontal="12dp"
+                    android:backgroundTint="#FFFFFF"
                     android:text="@string/end_service_with_icon"
                     android:textAllCaps="false"
-                    android:textColor="@color/white"
-                    android:textSize="11sp" />
+                    android:textColor="#B71C1C"
+                    android:textSize="12sp"
+                    app:icon="@android:drawable/presence_busy"
+                    app:iconGravity="textStart"
+                    app:iconPadding="6dp"
+                    app:iconTint="#D32F2F"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="#E0B4B4" />
             </LinearLayout>
         </LinearLayout>
 
@@ -350,21 +364,23 @@
                     android:id="@+id/contentTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="26sp"
-                    android:textStyle="bold" />
+                    android:textColor="@color/kitchen_text_primary"
+                    android:textSize="30sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/loadTodaysMealsButton"
                     android:layout_width="match_parent"
-                    android:layout_height="88dp"
-                    android:layout_marginTop="12dp"
+                    android:layout_height="64dp"
+                    android:layout_marginTop="16dp"
                     android:backgroundTint="@color/kitchen_accent"
-                    app:iconGravity="textStart"
-                    app:iconPadding="12dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
                     android:text="@string/load_meals_button_with_icon"
                     android:textAllCaps="false"
                     android:textColor="@color/white"
-                    android:textSize="22sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -387,10 +403,10 @@
                         android:id="@+id/prepListContainer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="14dp"
                         app:cardBackgroundColor="@color/kitchen_surface"
-                        app:cardCornerRadius="20dp"
-                        app:cardElevation="5dp">
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="6dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -403,18 +419,16 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/meals_to_prepare_with_icon"
-                                android:textColor="@color/kitchen_text_primary"
-                                android:textSize="24sp"
+                                android:textColor="@color/kitchen_text_secondary"
+                                android:textSize="16sp"
                                 android:textStyle="bold" />
 
-                            <TextView
-                                android:id="@+id/prepSummary"
+                            <LinearLayout
+                                android:id="@+id/prepSummaryContainer"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="12dp"
-                                android:textColor="@color/kitchen_primary"
-                                android:textSize="30sp"
-                                android:textStyle="bold" />
+                                android:layout_marginTop="10dp"
+                                android:orientation="vertical" />
                         </LinearLayout>
                     </androidx.cardview.widget.CardView>
 
@@ -438,13 +452,15 @@
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/startServiceButton"
                             android:layout_width="match_parent"
-                            android:layout_height="78dp"
+                            android:layout_height="62dp"
                             android:layout_marginTop="12dp"
                             android:backgroundTint="@color/kitchen_success"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
                             android:text="@string/start_service_button_with_icon"
                             android:textAllCaps="false"
                             android:textColor="@color/white"
-                            android:textSize="22sp"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -452,10 +468,10 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:background="#FFF1F2"
+                            android:background="#FEF2F2"
                             android:padding="10dp"
                             android:textColor="@color/kitchen_danger"
-                            android:textSize="16sp"
+                            android:textSize="14sp"
                             android:textStyle="bold"
                             android:visibility="gone" />
                     </LinearLayout>

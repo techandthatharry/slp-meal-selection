@@ -6,13 +6,16 @@
     <color name="child_green">#2E7D32</color>
     <color name="child_orange">#EF6C00</color>
 
-    <color name="kitchen_bg">#F2F4F7</color>
+    <color name="kitchen_bg">#F8FAFC</color>
     <color name="kitchen_surface">#FFFFFF</color>
-    <color name="kitchen_primary">#1D3557</color>
-    <color name="kitchen_accent">#457B9D</color>
-    <color name="kitchen_success">#2A9D8F</color>
-    <color name="kitchen_warning">#E9C46A</color>
-    <color name="kitchen_danger">#E63946</color>
-    <color name="kitchen_text_primary">#102A43</color>
-    <color name="kitchen_text_secondary">#486581</color>
+    <color name="kitchen_header_bg">#EDEDED</color>
+    <color name="kitchen_primary">#0F172A</color>
+    <color name="kitchen_accent">#626060</color>
+    <color name="kitchen_success">#16A34A</color>
+    <color name="kitchen_warning">#D97706</color>
+    <color name="kitchen_danger">#DC2626</color>
+    <color name="kitchen_text_primary">#0F172A</color>
+    <color name="kitchen_text_secondary">#475569</color>
+    <color name="meal_count_text">#666666</color>
+    <color name="meal_name_text">#333333</color>
 </resources>
