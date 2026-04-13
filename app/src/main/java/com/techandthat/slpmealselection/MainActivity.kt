@@ -298,8 +298,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun isCredentialValid(tabletType: TabletType, username: String, password: String): Boolean = when (tabletType) {
-        TabletType.KITCHEN -> username == "kitchen" && password == "kitchen"
-        TabletType.CHILD -> username == "child" && password == "child"
+        TabletType.KITCHEN -> username == "k" && password == "k"
+        TabletType.CHILD -> username == "c" && password == "c"
     }
 
     private fun showSetupError(message: String) {
