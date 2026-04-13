@@ -156,17 +156,17 @@ class MainActivity : ComponentActivity() {
     private fun fetchStudentsFromArbor() {
         functions
             .getHttpsCallable("getArborStudents")
-            .call()
+            .call(mapOf("schoolName" to selectedSchool))
             .addOnSuccessListener { result: HttpsCallableResult ->
                 @Suppress("UNCHECKED_CAST")
                 val data = result.data as? Map<String, Any>
                 Log.d("ArborIntegration", "Success: $data")
-                Toast.makeText(this, "Arbor students fetched successfully", Toast.LENGTH_SHORT).show()
-                // TODO: Parse student data and map into your app models/UI state.
+                loadChildRecordsFromFirestore()
+                Toast.makeText(this, "Arbor students synced to Firebase", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { exception: Exception ->
                 Log.e("ArborIntegration", "Failed to fetch students", exception)
-                Toast.makeText(this, "Failed to fetch students from Arbor", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Failed to sync students from Arbor", Toast.LENGTH_LONG).show()
             }
     }
 
