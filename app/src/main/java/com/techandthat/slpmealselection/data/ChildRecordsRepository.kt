@@ -10,7 +10,8 @@ class ChildRecordsRepository(
 
     data class ChildRecord(
         val childName: String,
-        val className: String
+        val className: String,
+        val mealSelected: String?
     )
 
     fun loadRecords(
@@ -22,8 +23,9 @@ class ChildRecordsRepository(
                 val records = snapshot.documents.mapNotNull { doc ->
                     val childName = doc.getString("childName")
                     val className = doc.getString("className")
+                    val mealSelected = doc.getString("mealSelected")
                     if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
-                    ChildRecord(childName, className)
+                    ChildRecord(childName, className, mealSelected)
                 }
                 onSuccess(records)
             }

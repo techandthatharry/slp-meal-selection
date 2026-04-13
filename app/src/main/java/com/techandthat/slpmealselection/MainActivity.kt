@@ -311,7 +311,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val mapped = records.map { record ->
-                    val meal = fallbackMealByChild["${record.childName}|${record.className}"] ?: "Meal"
+                    val meal = record.mealSelected
+                        ?.takeIf { it.isNotBlank() }
+                        ?: fallbackMealByChild["${record.childName}|${record.className}"]
+                        ?: "Meal not selected"
                     MealEntry(record.childName, record.className, meal)
                 }
 
