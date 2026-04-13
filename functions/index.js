@@ -99,7 +99,7 @@ exports.getArborStudents = onCall(
       const appUsername =
         process.env.ARBOR_APP_USERNAME || "deven@techandthat.com";
       const appPassword =
-        process.env.ARBOR_APP_PASSWORD || "YOUR_APP_PASSWORD";
+        process.env.ARBOR_APP_PASSWORD || "V3DbrM!m3swruY!";
       const schoolName = (
         request.data &&
         typeof request.data.schoolName === "string" &&

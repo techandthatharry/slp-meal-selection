@@ -71,7 +71,6 @@ class MainActivity : ComponentActivity() {
         setupSchoolSpinner(this, binding, schools)
         setupKeyboardSafeLoginScroll(binding)
         loadBrandAssets()
-        authenticateThenLoadRoster()
         showSplashThenSetup(binding)
         bindListeners()
     }
@@ -334,6 +333,7 @@ class MainActivity : ComponentActivity() {
         binding.setupErrorText.visibility = View.GONE
         binding.setupContainer.visibility = View.GONE
         binding.appContainer.visibility = View.VISIBLE
+        authenticateThenLoadRoster()
         renderAppContent()
     }
 
