@@ -16,10 +16,13 @@ enum class ChildScreen {
     SUCCESS
 }
 
-// Represents one child meal record and whether the meal has been served.
+// Represents one child meal record, metadata, and whether the meal has been served.
 data class MealEntry(
     val name: String,
     val clazz: String,
     val meal: String,
+    val documentId: String? = null,
+    val schoolName: String? = null,
+    val dietaryRequirements: List<String> = emptyList(),
     var served: Boolean = false
 )

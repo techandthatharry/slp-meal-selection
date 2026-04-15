@@ -44,13 +44,13 @@
     <string name="firebase_load_failed_with_reason">Could not load roster from Firebase: %1$s</string>
     <string name="firebase_delete_failed_with_reason">Could not delete today’s Firebase records: %1$s</string>
     <string name="firebase_auth_failed_with_reason">Could not authenticate with Firebase: %1$s</string>
-    <string name="service_status_started">Service is live. Children can check in now.</string>
+    <string name="service_status_started">Waiting for a child to check in</string>
     <string name="service_status_not_started">Service not started. Press Start Service to enable child check-in.</string>
     <string name="child_waiting_for_service">Waiting for kitchen to start service.</string>
     <string name="child_service_live">Service is live — children can check in.</string>
     <string name="start_meal_time">Start meal time</string>
     <string name="select_name_for_class">Select your name from %1$s</string>
-    <string name="back_to_classes">Back</string>
+    <string name="back_to_classes">Select different class</string>
     <string name="check_in_success_large">😊</string>
     <string name="oops">Oops</string>
     <string name="waiting_for_kitchen_overlay">Waiting for the kitchen</string>
@@ -68,6 +68,7 @@
     <string name="service_status_ready_to_load">Press Load today’s meals to begin.</string>
     <string name="service_status_ready_to_start">Press the Start Service button when you are ready to serve meals.</string>
     <string name="service_status_paused">Service paused. Child check-in is temporarily disabled.</string>
+    <string name="child_success_button_meal">%1$s\n%2$s</string>
     <string name="pause_service_button_with_icon">Pause service</string>
     <string name="resume_service_button_with_icon">Resume service</string>
 </resources>

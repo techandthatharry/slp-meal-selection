@@ -135,8 +135,9 @@ class MainActivity : ComponentActivity() {
             renderChildView()
         }
 
-        // Child flow: return from name selection to class selection.
+        // Child flow: explicitly switch to a different class from name list.
         binding.backToClassesButton.setOnClickListener {
+            selectedClass = null
             childScreen = ChildScreen.CLASS_SELECTION
             renderChildView()
         }
@@ -149,21 +150,43 @@ class MainActivity : ComponentActivity() {
             renderChildView()
         }
 
-        // Child flow: continue from success to waiting/class state.
+        // Child flow: continue from success to waiting/name state for same class.
         binding.checkInSuccessButton.setOnClickListener {
             showWaitingOverlayAfterConfirm = true
-            childScreen = ChildScreen.CLASS_SELECTION
+            childScreen = ChildScreen.NAME_SELECTION
             renderChildView()
         }
 
         // Kitchen flow: mark active meal served and return to class-selection route.
         binding.mealServedButton.setOnClickListener {
-            activeOrder?.served = true
+            val servedEntry = activeOrder ?: return@setOnClickListener
+
+            // Optimistically update UI so meal counts decrement immediately.
+            setMealServedLocally(servedEntry, served = true)
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
-            selectedClass = null
-            childScreen = ChildScreen.CLASS_SELECTION
-            renderAppContent()
+            childScreen = if (selectedClass.isNullOrBlank()) {
+                ChildScreen.CLASS_SELECTION
+            } else {
+                ChildScreen.NAME_SELECTION
+            }
+            renderKitchenView()
+
+            repository.markMealServed(
+                entry = servedEntry,
+                schoolName = selectedSchool,
+                onSuccess = {
+                    // No-op: UI already updated optimistically.
+                },
+                onFailure = { error ->
+                    // Roll back optimistic state if persistence fails.
+                    setMealServedLocally(servedEntry, served = false)
+                    activeOrder = servedEntry
+                    firebaseStatusMessage = "Failed to save served meal"
+                    Toast.makeText(this, error.message ?: "Failed to mark meal served", Toast.LENGTH_LONG).show()
+                    renderKitchenView()
+                }
+            )
         }
 
         // Global: return to setup screen and clear current session UI state.
@@ -310,6 +333,23 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // Updates in-memory meal entries by document ID/name+class for immediate UI refreshes.
+    private fun setMealServedLocally(target: MealEntry, served: Boolean) {
+        val index = simulatedDatabase.indexOfFirst { entry ->
+            if (!target.documentId.isNullOrBlank() && !entry.documentId.isNullOrBlank()) {
+                entry.documentId == target.documentId
+            } else {
+                entry.name == target.name && entry.clazz == target.clazz && entry.meal == target.meal
+            }
+        }
+
+        if (index >= 0) {
+            simulatedDatabase[index].served = served
+        } else {
+            target.served = served
+        }
+    }
+
     // Loads Firestore child records into in-memory meal list used by both tablet modes.
     private fun loadChildRecordsFromFirestore() {
         repository.loadRecords(
@@ -327,7 +367,15 @@ class MainActivity : ComponentActivity() {
                         ?.takeIf { it.isNotBlank() }
                         ?: fallbackMealByChild["${record.childName}|${record.className}"]
                         ?: "Meal not selected"
-                    MealEntry(record.childName, record.className, meal)
+                    MealEntry(
+                        name = record.childName,
+                        clazz = record.className,
+                        meal = meal,
+                        documentId = record.documentId,
+                        schoolName = record.schoolName,
+                        dietaryRequirements = record.dietaryRequirements,
+                        served = record.served
+                    )
                 }
 
                 simulatedDatabase.clear()
@@ -558,8 +606,9 @@ class MainActivity : ComponentActivity() {
         binding.loadTodaysMealsButton.alpha = if (canLoadMeals) 1f else 0.8f
         binding.loadTodaysMealsButton.text = getString(R.string.load_todays_meals)
 
-        // Show inline prep loading indicator while sync is active.
+        // Show inline prep loading indicator and status bar while sync is active.
         binding.prepLoadingText.visibility = if (isLoadingMeals) View.VISIBLE else View.GONE
+        binding.prepLoadingProgress.visibility = if (isLoadingMeals) View.VISIBLE else View.GONE
 
         // Keep school/end controls visible and set enabled state.
         binding.changeSchoolButton.visibility = View.VISIBLE
@@ -583,9 +632,24 @@ class MainActivity : ComponentActivity() {
             binding.kitchenOrderContainer.visibility = View.VISIBLE
             binding.kitchenOrderChildName.text = activeOrder?.name
             binding.kitchenOrderMealName.text = activeOrder?.meal
+
+            val dietaryText = activeOrder
+                ?.dietaryRequirements
+                ?.filter { it.isNotBlank() && !it.equals("No known dietary requirements", ignoreCase = true) }
+                ?.joinToString(separator = " • ")
+                ?.takeIf { it.isNotBlank() }
+
+            if (dietaryText.isNullOrBlank()) {
+                binding.kitchenOrderDietaryRequirements.visibility = View.GONE
+            } else {
+                binding.kitchenOrderDietaryRequirements.text = dietaryText
+                binding.kitchenOrderDietaryRequirements.visibility = View.VISIBLE
+            }
+
             binding.mealServedButton.isEnabled = true
         } else {
             binding.kitchenOrderContainer.visibility = View.GONE
+            binding.kitchenOrderDietaryRequirements.visibility = View.GONE
         }
 
         // Reorder major kitchen sections based on whether check-in has begun.
@@ -607,7 +671,7 @@ class MainActivity : ComponentActivity() {
 
     // Renders child dashboard state machine and per-step UI transitions.
     private fun renderChildView() {
-        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.child_orange))
+        binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.kitchen_header_bg))
         binding.headerTitle.text = getString(R.string.child_facing)
         binding.headerSubtitle.text = getString(R.string.child_tablet_mode)
         binding.loadTodaysMealsButton.visibility = View.GONE
@@ -711,11 +775,12 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            ChildScreen.SUCCESS -> renderSuccessStep(binding)
+            ChildScreen.SUCCESS -> renderSuccessStep(binding, activeOrder)
         }
 
         // Show waiting overlay after success when returning to class selection.
-        val shouldShowOverlay = showWaitingOverlayAfterConfirm && activeOrder != null && childScreen == ChildScreen.CLASS_SELECTION
+        val shouldShowOverlay = showWaitingOverlayAfterConfirm && activeOrder != null &&
+            (childScreen == ChildScreen.CLASS_SELECTION || childScreen == ChildScreen.NAME_SELECTION)
         binding.waitingOverlay.visibility = if (shouldShowOverlay) View.VISIBLE else View.GONE
     }
 }

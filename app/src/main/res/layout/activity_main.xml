@@ -39,6 +39,7 @@
         android:id="@+id/setupContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:background="@color/kitchen_bg"
         android:fillViewport="true"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -51,14 +52,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="16dp">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:fontFamily="@font/montserrat_bold"
                 android:gravity="center"
                 android:text="@string/setup_title"
-                android:textColor="@color/slp_blue"
+                android:textColor="@color/kitchen_text_primary"
                 android:textSize="34sp"
                 android:textStyle="bold" />
 
@@ -66,30 +68,33 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:fontFamily="@font/montserrat_bold"
                 android:gravity="center"
                 android:text="@string/setup_subtitle"
-                android:textColor="#546E7A"
+                android:textColor="@color/kitchen_text_secondary"
                 android:textSize="16sp" />
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                app:cardBackgroundColor="@color/white"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="6dp">
+                app:cardBackgroundColor="@color/kitchen_surface"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardUseCompatPadding="true">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:padding="18dp">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/montserrat_bold"
                         android:text="@string/select_school_prompt"
-                        android:textColor="#102A43"
+                        android:textColor="@color/kitchen_text_primary"
                         android:textSize="19sp"
                         android:textStyle="bold" />
 
@@ -98,15 +103,17 @@
                         android:layout_width="match_parent"
                         android:layout_height="52dp"
                         android:layout_marginTop="10dp"
-                        android:background="#F4F7F6"
+                        android:background="@color/kitchen_bg"
+                        android:fontFamily="@font/montserrat_bold"
                         android:paddingHorizontal="12dp" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
+                        android:fontFamily="@font/montserrat_bold"
                         android:text="@string/select_tablet_type"
-                        android:textColor="#102A43"
+                        android:textColor="@color/kitchen_text_primary"
                         android:textSize="19sp"
                         android:textStyle="bold" />
 
@@ -121,10 +128,12 @@
                             android:id="@+id/kitchenTabletRadio"
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
-                            android:background="#F4F7F6"
+                            android:background="@color/kitchen_bg"
+                            android:fontFamily="@font/montserrat_bold"
                             android:gravity="center_vertical"
                             android:paddingHorizontal="12dp"
                             android:text="@string/kitchen_side_tablet"
+                            android:textColor="@color/kitchen_text_primary"
                             android:textSize="17sp" />
 
                         <RadioButton
@@ -132,10 +141,12 @@
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
                             android:layout_marginTop="8dp"
-                            android:background="#F4F7F6"
+                            android:background="@color/kitchen_bg"
+                            android:fontFamily="@font/montserrat_bold"
                             android:gravity="center_vertical"
                             android:paddingHorizontal="12dp"
                             android:text="@string/child_facing_tablet"
+                            android:textColor="@color/kitchen_text_primary"
                             android:textSize="17sp" />
                     </RadioGroup>
 
@@ -143,8 +154,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
+                        android:fontFamily="@font/montserrat_bold"
                         android:text="@string/username_label"
-                        android:textColor="#102A43"
+                        android:textColor="@color/kitchen_text_primary"
                         android:textSize="19sp"
                         android:textStyle="bold" />
 
@@ -152,16 +164,19 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
+                        app:boxBackgroundColor="@color/kitchen_bg"
                         app:boxBackgroundMode="outline"
                         app:boxCornerRadiusBottomEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusTopStart="12dp">
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxStrokeColor="@color/kitchen_text_secondary">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/usernameInput"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:fontFamily="@font/montserrat_bold"
                             android:hint="@string/username_hint"
                             android:paddingVertical="14dp"
                             android:singleLine="true"
@@ -172,8 +187,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
+                        android:fontFamily="@font/montserrat_bold"
                         android:text="@string/password_label"
-                        android:textColor="#102A43"
+                        android:textColor="@color/kitchen_text_primary"
                         android:textSize="19sp"
                         android:textStyle="bold" />
 
@@ -181,17 +197,20 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
+                        app:boxBackgroundColor="@color/kitchen_bg"
                         app:boxBackgroundMode="outline"
                         app:boxCornerRadiusBottomEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusTopStart="12dp"
+                        app:boxStrokeColor="@color/kitchen_text_secondary"
                         app:endIconMode="password_toggle">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/passwordInput"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:fontFamily="@font/montserrat_bold"
                             android:hint="@string/password_hint"
                             android:imeOptions="actionDone"
                             android:inputType="textPassword"
@@ -205,7 +224,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="70dp"
                         android:layout_marginTop="20dp"
-                        android:backgroundTint="@color/slp_blue"
+                        android:backgroundTint="@color/kitchen_success"
+                        android:fontFamily="@font/montserrat_bold"
                         android:text="@string/continue_label"
                         android:textAllCaps="false"
                         android:textColor="@color/white"
@@ -217,10 +237,11 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:background="#FDECEC"
+                        android:background="#FEF2F2"
+                        android:fontFamily="@font/montserrat_bold"
                         android:gravity="center"
                         android:padding="10dp"
-                        android:textColor="#DC3545"
+                        android:textColor="@color/kitchen_danger"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:visibility="gone" />
@@ -361,7 +382,7 @@
             android:layout_weight="1"
             android:clipToPadding="false"
             android:padding="16dp"
-            android:paddingBottom="88dp">
+            android:paddingBottom="56dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -388,13 +409,13 @@
                     android:textSize="18sp"
                     android:visibility="gone" />
 
-                <LinearLayout
-                    android:id="@+id/kitchenContent"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:orientation="vertical"
-                    android:visibility="gone">
+                                    <LinearLayout
+                        android:id="@+id/kitchenContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="vertical"
+                        android:visibility="gone">
 
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:id="@+id/prepAndLoadRow"
@@ -445,9 +466,20 @@
                                     android:layout_marginTop="10dp"
                                     android:fontFamily="@font/montserrat_bold"
                                     android:text="@string/loading_todays_meals"
-                                    android:textColor="@color/meal_name_text"
+                                    android:textColor="@color/kitchen_warning"
                                     android:textSize="16sp"
                                     android:textStyle="bold"
+                                    android:visibility="gone" />
+
+                                <ProgressBar
+                                    android:id="@+id/prepLoadingProgress"
+                                    style="?android:attr/progressBarStyleHorizontal"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="10dp"
+                                    android:layout_marginTop="8dp"
+                                    android:indeterminate="true"
+                                    android:indeterminateTint="@color/kitchen_warning"
+                                    android:progressBackgroundTint="@color/kitchen_bg"
                                     android:visibility="gone" />
                             </LinearLayout>
                         </androidx.cardview.widget.CardView>
@@ -472,6 +504,7 @@
                         android:id="@+id/kitchenPrimaryActionsRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
                         android:gravity="center"
                         android:orientation="horizontal">
 
@@ -512,23 +545,24 @@
                             android:textSize="20sp"
                             android:textStyle="bold" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/pauseServiceButton"
-                            android:layout_width="160dp"
-                            android:layout_height="160dp"
-                            android:layout_marginStart="12dp"
-                            android:backgroundTint="@color/kitchen_accent"
-                            android:fontFamily="@font/montserrat_bold"
-                            android:gravity="center"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="@string/pause_service_button_with_icon"
-                            android:textAllCaps="false"
-                            android:textColor="@color/white"
-                            android:textSize="18sp"
-                            android:textStyle="bold"
-                            android:visibility="gone" />
+
                     </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/pauseServiceButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="72dp"
+                        android:layout_marginTop="10dp"
+                        android:backgroundTint="@color/kitchen_accent"
+                        android:fontFamily="@font/montserrat_bold"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/pause_service_button_with_icon"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
 
                     <LinearLayout
                         android:id="@+id/serviceControlContainer"
@@ -579,6 +613,18 @@
                             android:gravity="center"
                             android:textSize="34sp"
                             android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/kitchenOrderDietaryRequirements"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="@font/montserrat_bold"
+                            android:gravity="center"
+                            android:textColor="@color/kitchen_danger"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/mealServedButton"

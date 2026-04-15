@@ -1,5 +1,6 @@
 package com.techandthat.slpmealselection.data
 
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.techandthat.slpmealselection.model.MealEntry
 
@@ -11,9 +12,13 @@ class ChildRecordsRepository(
 
     // Lightweight record shape used when loading existing records.
     data class ChildRecord(
+        val documentId: String,
         val childName: String,
         val className: String,
-        val mealSelected: String?
+        val schoolName: String?,
+        val mealSelected: String?,
+        val dietaryRequirements: List<String>,
+        val served: Boolean
     )
 
     // Reads childRecords from Firestore and maps them into ChildRecord models.
@@ -27,9 +32,15 @@ class ChildRecordsRepository(
                 val records = snapshot.documents.mapNotNull { doc ->
                     val childName = doc.getString("childName")
                     val className = doc.getString("className")
+                    val schoolName = doc.getString("schoolName")
                     val mealSelected = doc.getString("mealSelected")
+                    @Suppress("UNCHECKED_CAST")
+                    val dietaryRequirements = (doc.get("dietaryRequirements") as? List<Any>)
+                        ?.mapNotNull { it as? String }
+                        ?: emptyList()
+                    val served = doc.getBoolean("served") ?: false
                     if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
-                    ChildRecord(childName, className, mealSelected)
+                    ChildRecord(doc.id, childName, className, schoolName, mealSelected, dietaryRequirements, served)
                 }
                 onSuccess(records)
             }
@@ -115,10 +126,57 @@ class ChildRecordsRepository(
                     "schoolName" to record.schoolName,
                     "source" to record.source,
                     "mealSelected" to record.mealSelected,
-                    "dietaryRequirements" to record.dietaryRequirements
-                )
+                    "dietaryRequirements" to record.dietaryRequirements,
+                    "served" to false,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                com.google.firebase.firestore.SetOptions.merge()
             )
         }
+
+        batch.commit()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener(onFailure)
+    }
+
+    // Persists a served meal event and queues billing payload for Arbor handoff.
+    fun markMealServed(
+        entry: MealEntry,
+        schoolName: String,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val docId = entry.documentId
+            ?: "${entry.clazz}_${entry.name}".replace(" ", "_")
+        val recordRef = childRecordsCollection.document(docId)
+        val billingRef = firestore.collection("arborBillingQueue").document()
+
+        val batch = firestore.batch()
+
+        // Mark the source child record as served for prep/billing consistency.
+        batch.set(
+            recordRef,
+            mapOf(
+                "served" to true,
+                "servedAt" to FieldValue.serverTimestamp(),
+                "updatedAt" to FieldValue.serverTimestamp()
+            ),
+            com.google.firebase.firestore.SetOptions.merge()
+        )
+
+        // Enqueue a billing payload that can be processed and sent back to Arbor.
+        batch.set(
+            billingRef,
+            mapOf(
+                "schoolName" to (entry.schoolName ?: schoolName),
+                "childName" to entry.name,
+                "className" to entry.clazz,
+                "meal" to entry.meal,
+                "status" to "pending",
+                "sourceDocumentId" to docId,
+                "createdAt" to FieldValue.serverTimestamp()
+            )
+        )
 
         batch.commit()
             .addOnSuccessListener { onSuccess() }

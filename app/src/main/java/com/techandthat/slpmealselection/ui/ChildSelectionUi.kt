@@ -100,7 +100,7 @@ fun renderNameSelectionStep(
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.nameSelectionContainer.measuredHeight.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
-    val childButtonHeight = containerHeight / 5
+    val childButtonHeight = (containerHeight / 6).coerceAtMost(180)
 
     // Create one full-width button per child.
     children.forEach { child ->
@@ -125,9 +125,36 @@ fun renderNameSelectionStep(
     }
 }
 
+// Resolves a meal icon based on meal name keywords.
+private fun mealIconFor(mealName: String): String {
+    val normalized = mealName.lowercase()
+    return when {
+        normalized.contains("pizza") -> "🍕"
+        normalized.contains("pasta") || normalized.contains("spaghetti") || normalized.contains("mac") -> "🍜"
+        normalized.contains("fish") -> "🐟"
+        normalized.contains("chicken") -> "🍗"
+        normalized.contains("wrap") -> "🌯"
+        normalized.contains("potato") || normalized.contains("jacket") -> "🥔"
+        normalized.contains("curry") -> "🍛"
+        normalized.contains("salad") -> "🥗"
+        normalized.contains("burger") -> "🍔"
+        else -> "🍽️"
+    }
+}
+
 // Shows final success state after a child check-in is confirmed.
-fun renderSuccessStep(binding: ActivityMainBinding) {
+fun renderSuccessStep(binding: ActivityMainBinding, activeOrder: MealEntry?) {
     binding.classSelectionContainer.visibility = android.view.View.GONE
     binding.nameSelectionContainer.visibility = android.view.View.GONE
     binding.checkInSuccessContainer.visibility = android.view.View.VISIBLE
+
+    // Show expected meal and matching icon on the large green confirmation button.
+    val mealLabel = activeOrder?.meal?.takeIf { it.isNotBlank() } ?: "Meal"
+    val icon = mealIconFor(mealLabel)
+    binding.checkInSuccessButton.text =
+        binding.root.context.getString(
+            com.techandthat.slpmealselection.R.string.child_success_button_meal,
+            icon,
+            mealLabel
+        )
 }
