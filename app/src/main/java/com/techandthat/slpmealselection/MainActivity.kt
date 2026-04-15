@@ -12,13 +12,12 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
-import com.google.firebase.functions.HttpsCallableResult
 import java.util.Locale
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
+import com.techandthat.slpmealselection.network.ArborSyncService
+import com.techandthat.slpmealselection.security.AuthManager
 import com.techandthat.slpmealselection.model.ChildScreen
 import com.techandthat.slpmealselection.model.MealEntry
 import com.techandthat.slpmealselection.model.TabletType
@@ -35,8 +34,8 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val repository = ChildRecordsRepository()
-    private val firebaseAuth by lazy { FirebaseAuth.getInstance() }
-    private val functions: FirebaseFunctions by lazy { FirebaseFunctions.getInstance("europe-west2") }
+    private val authManager = AuthManager()
+    private val arborSyncService = ArborSyncService()
 
     private val schools = listOf(
         "St Luke's Primary",
@@ -152,16 +151,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun authenticateThenLoadRoster() {
-        if (firebaseAuth.currentUser != null) {
+        if (authManager.currentUserExists()) {
             loadChildRecordsFromFirestore()
             return
         }
 
-        firebaseAuth.signInAnonymously()
-            .addOnSuccessListener {
+        authManager.signInAnonymously(
+            onSuccess = {
                 loadChildRecordsFromFirestore()
-            }
-            .addOnFailureListener { error ->
+            },
+            onFailure = { error ->
                 val failureMessage = getString(
                     R.string.firebase_auth_failed_with_reason,
                     error.message ?: "unknown"
@@ -172,6 +171,7 @@ class MainActivity : ComponentActivity() {
                 renderAppContent()
                 renderKitchenView()
             }
+        )
     }
 
     private fun fetchStudentsFromArbor() {
@@ -182,55 +182,26 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun ensureAuthenticatedThenSync(retryOnUnauthenticated: Boolean) {
-        val currentUser = firebaseAuth.currentUser
-        if (currentUser == null) {
-            firebaseAuth.signInAnonymously()
-                .addOnSuccessListener {
-                    runArborSyncCallable(retryOnUnauthenticated)
-                }
-                .addOnFailureListener { error ->
-                    val failureMessage = getString(
-                        R.string.firebase_auth_failed_with_reason,
-                        error.message ?: "unknown"
-                    )
-                    Log.e("ArborIntegration", "Anonymous auth failed before sync", error)
-                    Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
-                }
-            return
-        }
-
-        currentUser.getIdToken(true)
-            .addOnSuccessListener {
+        authManager.ensureFreshAuth(
+            onReady = {
                 runArborSyncCallable(retryOnUnauthenticated)
+            },
+            onFailure = { error ->
+                val failureMessage = getString(
+                    R.string.firebase_auth_failed_with_reason,
+                    error.message ?: "unknown"
+                )
+                Log.e("ArborIntegration", "Auth failed before sync", error)
+                Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
             }
-            .addOnFailureListener { error ->
-                Log.e("ArborIntegration", "Token refresh failed before sync", error)
-                firebaseAuth.signInAnonymously()
-                    .addOnSuccessListener {
-                        runArborSyncCallable(retryOnUnauthenticated)
-                    }
-                    .addOnFailureListener { authError ->
-                        val failureMessage = getString(
-                            R.string.firebase_auth_failed_with_reason,
-                            authError.message ?: "unknown"
-                        )
-                        Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
-                    }
-            }
+        )
     }
 
     private fun runArborSyncCallable(retryOnUnauthenticated: Boolean) {
-        functions
-            .getHttpsCallable("getArborStudents")
-            .call(
-                mapOf(
-                    "schoolName" to selectedSchool,
-                    "maxRecords" to 10
-                )
-            )
-            .addOnSuccessListener { result: HttpsCallableResult ->
-                @Suppress("UNCHECKED_CAST")
-                val data = result.data as? Map<String, Any>
+        arborSyncService.syncStudents(
+            schoolName = selectedSchool,
+            maxRecords = 10,
+            onSuccess = { data ->
                 Log.d("ArborIntegration", "Success: $data")
 
                 @Suppress("UNCHECKED_CAST")
@@ -299,15 +270,15 @@ class MainActivity : ComponentActivity() {
                     renderKitchenView()
                     Toast.makeText(this, message ?: "No meals returned", Toast.LENGTH_SHORT).show()
                 }
-            }
-            .addOnFailureListener { exception: Exception ->
+            },
+            onFailure = { exception ->
                 val functionsException = exception as? FirebaseFunctionsException
                 val isUnauthenticated = functionsException?.code == FirebaseFunctionsException.Code.UNAUTHENTICATED
                 if (retryOnUnauthenticated && isUnauthenticated) {
                     Log.w("ArborIntegration", "Callable returned UNAUTHENTICATED, retrying with fresh auth")
-                    firebaseAuth.signOut()
+                    authManager.signOut()
                     ensureAuthenticatedThenSync(retryOnUnauthenticated = false)
-                    return@addOnFailureListener
+                    return@syncStudents
                 }
 
                 isLoadingMeals = false
@@ -316,6 +287,7 @@ class MainActivity : ComponentActivity() {
                 Log.e("ArborIntegration", "Failed to fetch students", exception)
                 Toast.makeText(this, "Failed to sync students from Arbor", Toast.LENGTH_LONG).show()
             }
+        )
     }
 
     private fun loadChildRecordsFromFirestore() {
