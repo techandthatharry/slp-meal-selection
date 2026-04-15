@@ -28,7 +28,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:fontFamily="@font/chakra_petch"
+            android:fontFamily="@font/chakra_petch_regular"
             android:text="@string/meal_selection_kitchen"
             android:textColor="@color/white"
             android:textSize="34sp"
@@ -270,7 +270,7 @@
                     android:id="@+id/headerTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/chakra_petch"
+                    android:fontFamily="@font/chakra_petch_regular"
                     android:textColor="@color/white"
                     android:textSize="24sp"
                     android:textStyle="bold" />
@@ -280,9 +280,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:fontFamily="@font/montserrat"
+                    android:fontFamily="@font/chakra_petch_regular"
                     android:textColor="@color/white"
-                    android:textSize="14sp" />
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <LinearLayout
@@ -296,6 +297,7 @@
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
+                    android:fontFamily="@font/montserrat_regular"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="40dp"
@@ -303,6 +305,7 @@
                     android:textAllCaps="false"
                     android:textColor="@color/meal_name_text"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     app:strokeColor="#BDBDBD" />
 
                 <com.google.android.material.button.MaterialButton
@@ -310,6 +313,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
                     android:layout_marginStart="8dp"
+                    android:fontFamily="@font/montserrat_regular"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="40dp"
@@ -320,6 +324,7 @@
                     android:textAllCaps="false"
                     android:textColor="@color/meal_name_text"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     app:strokeWidth="1dp"
                     app:strokeColor="#BDBDBD" />
 
@@ -328,6 +333,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
                     android:layout_marginStart="8dp"
+                    android:fontFamily="@font/montserrat_regular"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="40dp"
@@ -338,6 +344,7 @@
                     android:textAllCaps="false"
                     android:textColor="#B71C1C"
                     android:textSize="12sp"
+                    android:textStyle="bold"
                     app:icon="@android:drawable/presence_busy"
                     app:iconGravity="textStart"
                     app:iconPadding="6dp"
@@ -366,7 +373,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
-                    android:fontFamily="@font/chakra_petch"
+                    android:fontFamily="@font/chakra_petch_regular"
                     android:textColor="@color/kitchen_text_primary"
                     android:textSize="30sp"
                     android:textStyle="bold"
@@ -377,6 +384,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_regular"
                     android:textSize="18sp"
                     android:visibility="gone" />
 
@@ -417,9 +425,9 @@
                                     android:id="@+id/prepListTitle"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:fontFamily="@font/chakra_petch"
+                                    android:fontFamily="@font/chakra_petch_regular"
                                     android:text="@string/meals_to_prepare_with_icon"
-                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textColor="@color/meal_name_text"
                                     android:textSize="16sp"
                                     android:textStyle="bold" />
 
@@ -435,9 +443,9 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="10dp"
-                                    android:fontFamily="@font/montserrat"
+                                    android:fontFamily="@font/montserrat_regular"
                                     android:text="@string/loading_todays_meals"
-                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textColor="@color/meal_name_text"
                                     android:textSize="16sp"
                                     android:textStyle="bold"
                                     android:visibility="gone" />
@@ -452,7 +460,7 @@
                             android:layout_marginTop="6dp"
                             android:layout_marginBottom="6dp"
                             android:backgroundTint="@color/kitchen_accent"
-                            android:fontFamily="@font/montserrat"
+                            android:fontFamily="@font/montserrat_regular"
                             android:gravity="center"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
@@ -486,7 +494,7 @@
                             android:id="@+id/serviceStatusText"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/montserrat"
+                            android:fontFamily="@font/montserrat_regular"
                             android:textColor="@color/kitchen_text_secondary"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -498,7 +506,7 @@
                             android:layout_gravity="center_horizontal"
                             android:layout_marginTop="12dp"
                             android:backgroundTint="@color/kitchen_success"
-                            android:fontFamily="@font/montserrat"
+                            android:fontFamily="@font/montserrat_regular"
                             android:gravity="center"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
@@ -514,6 +522,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
                             android:background="#FEF2F2"
+                            android:fontFamily="@font/montserrat_regular"
                             android:padding="10dp"
                             android:textColor="@color/kitchen_danger"
                             android:textSize="14sp"
@@ -533,6 +542,7 @@
                             android:id="@+id/kitchenOrderChildName"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:fontFamily="@font/montserrat_regular"
                             android:gravity="center"
                             android:textSize="40sp"
                             android:textStyle="bold" />
@@ -542,6 +552,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
+                            android:fontFamily="@font/montserrat_regular"
                             android:gravity="center"
                             android:textSize="34sp"
                             android:textStyle="bold" />
@@ -567,6 +578,7 @@
                         android:id="@+id/childServiceGateText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/montserrat_regular"
                         android:textColor="@color/child_green"
                         android:textSize="24sp"
                         android:textStyle="bold" />
@@ -576,7 +588,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="96dp"
                         android:layout_marginTop="12dp"
-                        android:text="@string/start_meal_time" />
+                        android:fontFamily="@font/montserrat_regular"
+                        android:text="@string/start_meal_time"
+                        android:textStyle="bold" />
 
                     <FrameLayout
                         android:id="@+id/childStepContainer"
@@ -614,7 +628,9 @@
                                 android:id="@+id/backToClassesButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/back_to_classes" />
+                                android:fontFamily="@font/montserrat_regular"
+                                android:text="@string/back_to_classes"
+                                android:textStyle="bold" />
 
                             <ScrollView
                                 android:id="@+id/nameListScroll"
@@ -649,10 +665,12 @@
                                 android:layout_height="match_parent"
                                 android:layout_weight="0.85"
                                 android:backgroundTint="@color/child_green"
+                                android:fontFamily="@font/montserrat_regular"
                                 android:text="@string/check_in_success_large"
                                 android:textAllCaps="false"
                                 android:textColor="@color/white"
-                                android:textSize="40sp" />
+                                android:textSize="40sp"
+                                android:textStyle="bold" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/oopsButton"
@@ -661,10 +679,12 @@
                                 android:layout_marginStart="8dp"
                                 android:layout_weight="0.15"
                                 android:backgroundTint="#D32F2F"
+                                android:fontFamily="@font/montserrat_regular"
                                 android:text="@string/oops"
                                 android:textAllCaps="false"
                                 android:textColor="@color/white"
-                                android:textSize="22sp" />
+                                android:textSize="22sp"
+                                android:textStyle="bold" />
                         </LinearLayout>
 
                         <LinearLayout
@@ -679,6 +699,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:fontFamily="@font/montserrat_regular"
                                 android:text="@string/waiting_for_kitchen_overlay"
                                 android:textColor="@color/white"
                                 android:textSize="36sp"
@@ -699,9 +720,11 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="@font/chakra_petch_regular"
                 android:text="@string/powered_by"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <ImageView
                 android:id="@+id/footerLogo"

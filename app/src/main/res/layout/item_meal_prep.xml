@@ -12,6 +12,7 @@
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:gravity="center"
+        android:textColor="@color/meal_name_text"
         android:textSize="22sp" />
 
     <TextView
@@ -19,8 +20,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
+        android:fontFamily="@font/montserrat_regular"
         android:textColor="@color/meal_count_text"
-        android:textSize="18sp" />
+        android:textSize="24sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/mealNameText"
@@ -28,6 +31,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
         android:layout_weight="1"
+        android:fontFamily="@font/montserrat_regular"
         android:textColor="@color/meal_name_text"
         android:textSize="20sp"
         android:textStyle="bold" />

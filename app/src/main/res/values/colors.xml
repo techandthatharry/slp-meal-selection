@@ -16,7 +16,7 @@
     <color name="kitchen_danger">#DC2626</color>
     <color name="kitchen_text_primary">#0F172A</color>
     <color name="kitchen_text_secondary">#475569</color>
-    <color name="meal_count_text">#666666</color>
-    <color name="meal_name_text">#333333</color>
-    <color name="meal_prep_cream">#FFFEFA</color>
+    <color name="meal_count_text">#323232</color>
+    <color name="meal_name_text">#323232</color>
+    <color name="meal_prep_cream">#CCCACA</color>
 </resources>

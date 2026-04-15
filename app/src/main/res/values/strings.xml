@@ -60,7 +60,7 @@
     <string name="change_school_with_icon">Change school</string>
     <string name="end_service_with_icon">End today’s service</string>
     <string name="meals_to_prepare_with_icon">Meals to prepare</string>
-    <string name="meal_count_format">%1$dx</string>
+    <string name="meal_count_format">%1$d x</string>
     <string name="loading_todays_meals">Loading today’s meals…</string>
     <string name="no_meals_loaded">No meals have been loaded, click the button.</string>
     <string name="reload_meals_title">Reload today’s meals?</string>
