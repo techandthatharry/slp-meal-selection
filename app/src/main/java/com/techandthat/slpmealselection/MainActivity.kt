@@ -90,7 +90,19 @@ class MainActivity : ComponentActivity() {
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
         binding.changeSchoolButton.setOnClickListener { showChangeSchoolDialog() }
         binding.loadTodaysMealsButton.setOnClickListener {
-            if (!isLoadingMeals) {
+            if (isLoadingMeals || serviceStarted) return@setOnClickListener
+
+            val hasPrepData = simulatedDatabase.any { !it.served }
+            if (hasPrepData) {
+                AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.reload_meals_title))
+                    .setMessage(getString(R.string.reload_meals_message))
+                    .setNegativeButton(getString(R.string.cancel), null)
+                    .setPositiveButton(getString(R.string.load_todays_meals)) { _, _ ->
+                        fetchStudentsFromArbor()
+                    }
+                    .show()
+            } else {
                 fetchStudentsFromArbor()
             }
         }
@@ -465,10 +477,18 @@ class MainActivity : ComponentActivity() {
         binding.kitchenContent.visibility = View.VISIBLE
         binding.childContent.visibility = View.GONE
 
+        val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
+        val shouldHideLoadAndStart = serviceStarted
+        val outstandingMeals = simulatedDatabase.filterNot { it.served }
+        val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
+        val hasPrepData = outstandingMeals.isNotEmpty()
+
         binding.serviceStatusText.text = if (serviceStarted) {
             getString(R.string.service_status_started)
+        } else if (!hasPrepData) {
+            getString(R.string.service_status_ready_to_load)
         } else {
-            getString(R.string.service_status_not_started)
+            ""
         }
         binding.prepListTitle.text = if (serviceStarted) {
             getString(R.string.meals_to_be_served)
@@ -482,14 +502,8 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
-        val shouldHideLoadAndStart = serviceStarted
-        val outstandingMeals = simulatedDatabase.filterNot { it.served }
-        val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
-
         binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
-        val hasPrepData = outstandingMeals.isNotEmpty()
 
         binding.startServiceButton.isEnabled = !serviceStarted && hasPrepData
         binding.startServiceButton.backgroundTintList = ColorStateList.valueOf(
@@ -500,12 +514,12 @@ class MainActivity : ComponentActivity() {
         )
         binding.startServiceButton.alpha = if (binding.startServiceButton.isEnabled) 1f else 0.7f
 
-        val canLoadMeals = !serviceStarted && !isLoadingMeals && !hasPrepData
+        val canLoadMeals = !serviceStarted && !isLoadingMeals
         binding.loadTodaysMealsButton.isEnabled = canLoadMeals
         binding.loadTodaysMealsButton.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(
                 this,
-                if (canLoadMeals) R.color.kitchen_success else R.color.kitchen_accent
+                if (!hasPrepData && canLoadMeals) R.color.kitchen_success else R.color.kitchen_accent
             )
         )
         binding.loadTodaysMealsButton.alpha = if (canLoadMeals) 1f else 0.8f

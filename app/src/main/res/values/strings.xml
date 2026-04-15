@@ -63,4 +63,7 @@
     <string name="meal_count_format">%1$dx</string>
     <string name="loading_todays_meals">Loading today’s meals…</string>
     <string name="no_meals_loaded">No meals have been loaded, click the button.</string>
+    <string name="reload_meals_title">Reload today’s meals?</string>
+    <string name="reload_meals_message">Are you sure you want to reload today’s meals?</string>
+    <string name="service_status_ready_to_load">Press Load today’s meals to begin.</string>
 </resources>
