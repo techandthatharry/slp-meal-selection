@@ -3,23 +3,27 @@ package com.techandthat.slpmealselection.data
 import com.google.firebase.firestore.FirebaseFirestore
 import com.techandthat.slpmealselection.model.MealEntry
 
+// Handles all Firestore CRUD operations for child meal records.
 class ChildRecordsRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     private val childRecordsCollection = firestore.collection("childRecords")
 
+    // Lightweight record shape used when loading existing records.
     data class ChildRecord(
         val childName: String,
         val className: String,
         val mealSelected: String?
     )
 
+    // Reads childRecords from Firestore and maps them into ChildRecord models.
     fun loadRecords(
         onSuccess: (List<ChildRecord>) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
         childRecordsCollection.get()
             .addOnSuccessListener { snapshot ->
+                // Convert Firestore docs to domain rows and skip malformed entries.
                 val records = snapshot.documents.mapNotNull { doc ->
                     val childName = doc.getString("childName")
                     val className = doc.getString("className")
@@ -32,6 +36,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
+    // Seeds initial static data into Firestore for bootstrap/demo scenarios.
     fun seedInitialData(
         initialDummyData: List<MealEntry>,
         schoolName: String,
@@ -39,6 +44,8 @@ class ChildRecordsRepository(
         onFailure: (Exception) -> Unit
     ) {
         val batch = firestore.batch()
+
+        // Create/merge one Firestore document per dummy record.
         initialDummyData.forEach { entry ->
             val record = mapOf(
                 "childName" to entry.name,
@@ -54,6 +61,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
+    // Deletes every document in childRecords collection.
     fun deleteAllRecords(
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
@@ -61,7 +69,10 @@ class ChildRecordsRepository(
         childRecordsCollection.get()
             .addOnSuccessListener { snapshot ->
                 val batch = firestore.batch()
+
+                // Queue delete operation for each existing record.
                 snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+
                 batch.commit()
                     .addOnSuccessListener { onSuccess() }
                     .addOnFailureListener(onFailure)
@@ -69,6 +80,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
+    // Full record shape used when saving Arbor sync results.
     data class ArborStudentRecord(
         val documentId: String,
         val childName: String,
@@ -79,17 +91,21 @@ class ChildRecordsRepository(
         val dietaryRequirements: List<String>
     )
 
+    // Upserts Arbor records into Firestore in a single batch transaction.
     fun upsertArborRecords(
         records: List<ArborStudentRecord>,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        // Short-circuit when there is nothing to write.
         if (records.isEmpty()) {
             onSuccess()
             return
         }
 
         val batch = firestore.batch()
+
+        // Queue create/update operation for every Arbor record.
         records.forEach { record ->
             batch.set(
                 childRecordsCollection.document(record.documentId),

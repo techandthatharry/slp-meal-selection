@@ -1,11 +1,14 @@
+// Implements callable endpoints for Arbor sync and Firestore updates.
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
+// Ensure Firebase Admin is initialized once per runtime.
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
+// Shared Firestore reference for function writes.
 const db = admin.firestore();
 
 /**
@@ -16,6 +19,7 @@ const db = admin.firestore();
  */
 function firstDefined(...values) {
   return values.find((value) => {
+    // Treat empty strings as undefined values.
     if (typeof value === "string") return value.trim().length > 0;
     return value !== undefined && value !== null;
   });
@@ -43,6 +47,8 @@ function toSlug(value) {
  */
 function objectValuesAsRows(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+
+  // Keep only object-like rows when converting map payloads.
   return Object.values(value)
       .filter((item) => item && typeof item === "object");
 }
@@ -57,6 +63,7 @@ function extractStudents(payload) {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") return [];
 
+  // Handle common Arbor array containers.
   if (Array.isArray(payload.data)) return payload.data;
   if (payload.data && Array.isArray(payload.data.students)) {
     return payload.data.students;
@@ -65,22 +72,27 @@ function extractStudents(payload) {
   if (Array.isArray(payload.results)) return payload.results;
   if (Array.isArray(payload.students)) return payload.students;
 
+  // Handle nested data payload under students key.
   if (payload.students && payload.students.data &&
       Array.isArray(payload.students.data)) {
     return payload.students.data;
   }
 
+  // Handle object-map style students payload.
   const studentObjectRows = objectValuesAsRows(payload.students);
   if (studentObjectRows.length > 0) return studentObjectRows;
 
+  // Handle wrapper payloads with response.students.
   if (payload.response && Array.isArray(payload.response.students)) {
     return payload.response.students;
   }
 
+  // Handle single-student object payload.
   if (payload.student && typeof payload.student === "object") {
     return [payload.student];
   }
 
+  // Last attempt: treat data object values as rows.
   if (payload.data && typeof payload.data === "object") {
     return objectValuesAsRows(payload.data);
   }
@@ -88,12 +100,6 @@ function extractStudents(payload) {
   return [];
 }
 
-/**
- * Maps one Arbor student object to app Firestore record shape.
- *
- * @param {Object} rawStudent Raw Arbor student object.
- * @return {{childName: string, className: string}|null} Mapped record.
- */
 /**
  * Extracts dietary requirements from an Arbor student payload.
  *
@@ -110,6 +116,7 @@ function extractDietaryRequirements(rawStudent) {
         rawStudent && rawStudent.allergies,
     );
 
+  // Normalize array payloads into readable dietary labels.
   if (Array.isArray(value)) {
     return value
         .map((item) => {
@@ -122,6 +129,7 @@ function extractDietaryRequirements(rawStudent) {
         .filter((item) => !!item);
   }
 
+  // Normalize single-string payloads into a one-item array.
   if (typeof value === "string" && value.trim().length > 0) {
     return [value.trim()];
   }
@@ -204,8 +212,10 @@ function mapArborStudent(rawStudent, index) {
       "Unknown",
   );
 
+  // Drop rows that do not have a usable display name.
   if (!fullName) return null;
 
+  // Resolve meal choice using Arbor fields first, then fallback value.
   const mealSelected = firstDefined(
       rawStudent && rawStudent.meal_selected,
       rawStudent && rawStudent.mealSelected,
@@ -214,6 +224,7 @@ function mapArborStudent(rawStudent, index) {
       fallbackMealSelection(index),
   );
 
+  // Resolve dietary requirements and fallback to demo values when absent.
   const dietaryRequirements = extractDietaryRequirements(rawStudent);
   const finalDietaryRequirements = dietaryRequirements.length > 0 ?
     dietaryRequirements :
@@ -227,6 +238,7 @@ function mapArborStudent(rawStudent, index) {
   };
 }
 
+// Callable endpoint to pull Arbor students and upsert them into Firestore.
 exports.getArborStudents = onCall(
     {
       region: "europe-west2",
@@ -252,6 +264,7 @@ exports.getArborStudents = onCall(
           Math.min(Math.floor(requestedMaxRecords), 50) :
           1;
 
+      // Enforce configured Arbor credentials before making outbound API calls.
       if (!appUsername || !appPassword || appPassword === "YOUR_APP_PASSWORD") {
         throw new HttpsError(
             "failed-precondition",
@@ -265,6 +278,7 @@ exports.getArborStudents = onCall(
       const arborUrl = "https://api-sandbox2.uk.arbor.sc/rest-v2/students?format=json";
 
       try {
+        // Fetch student list from Arbor list endpoint.
         const response = await fetch(arborUrl, {
           method: "GET",
           headers: {
@@ -273,6 +287,7 @@ exports.getArborStudents = onCall(
           },
         });
 
+        // Return friendly payload for HTTP errors and rate limits.
         if (!response.ok) {
           const rateLimited = response.status === 429;
           logger.warn("Arbor API request failed", {
@@ -298,8 +313,11 @@ exports.getArborStudents = onCall(
         const detailedStudents = [];
         let rateLimitedDuringDetails = false;
 
+        // Expand summary rows via href detail requests when person is absent.
         for (let i = 0; i < rawStudents.length; i++) {
           const student = rawStudents[i];
+
+          // Use row directly if full person details already exist.
           if (student && student.person) {
             detailedStudents.push(student);
             continue;
@@ -320,6 +338,7 @@ exports.getArborStudents = onCall(
                 },
             );
 
+            // Stop detail loop when Arbor begins rate-limiting detail requests.
             if (!detailResponse.ok) {
               if (detailResponse.status === 429) {
                 rateLimitedDuringDetails = true;
@@ -327,6 +346,8 @@ exports.getArborStudents = onCall(
               }
               continue;
             }
+
+            // Extract the first student row from detail payload.
             const detailJson = await detailResponse.json();
             const detailStudent = extractStudents(detailJson)[0];
             if (detailStudent) detailedStudents.push(detailStudent);
@@ -337,13 +358,16 @@ exports.getArborStudents = onCall(
             });
           }
 
+          // Respect caller-provided max record limit.
           if (i >= maxRecords - 1) break;
         }
 
+        // Map Arbor rows into app-ready student records.
         const students = detailedStudents
             .map((student, index) => mapArborStudent(student, index))
             .filter((student) => student !== null);
 
+        // Build final Firestore document payloads with deterministic IDs.
         const studentRecords = students.map((student, index) => {
           const slugClass = toSlug(student.className);
           const slugName = toSlug(student.childName);
@@ -362,6 +386,8 @@ exports.getArborStudents = onCall(
         let writtenCount = 0;
         try {
           const batch = db.batch();
+
+          // Queue each student record as an upsert into childRecords.
           studentRecords.forEach((record) => {
             const ref = db.collection("childRecords").doc(record.documentId);
             batch.set(ref, {
@@ -375,6 +401,7 @@ exports.getArborStudents = onCall(
             }, {merge: true});
           });
 
+          // Commit batch only when there is data to write.
           if (studentRecords.length > 0) {
             await batch.commit();
             writtenCount = studentRecords.length;
@@ -386,6 +413,7 @@ exports.getArborStudents = onCall(
           });
         }
 
+        // Emit structured sync result for observability and client UX.
         logger.info("Arbor sync complete", {
           fetched: students.length,
           written: writtenCount,
@@ -416,6 +444,7 @@ exports.getArborStudents = onCall(
           stack: error && error.stack ? error.stack : "no-stack",
         });
 
+        // Return structured failure payload rather than throwing to app.
         return {
           success: false,
           fetched: 0,

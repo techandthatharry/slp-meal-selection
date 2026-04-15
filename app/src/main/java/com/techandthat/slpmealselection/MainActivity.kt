@@ -12,12 +12,12 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
-import com.techandthat.slpmealselection.network.ArborPayloadMapper
-import com.techandthat.slpmealselection.network.ArborSyncService
-import com.techandthat.slpmealselection.security.AuthManager
 import com.techandthat.slpmealselection.model.ChildScreen
 import com.techandthat.slpmealselection.model.MealEntry
 import com.techandthat.slpmealselection.model.TabletType
+import com.techandthat.slpmealselection.network.ArborPayloadMapper
+import com.techandthat.slpmealselection.network.ArborSyncService
+import com.techandthat.slpmealselection.security.AuthManager
 import com.techandthat.slpmealselection.ui.MealPrepUi
 import com.techandthat.slpmealselection.ui.decodeAssetBitmap
 import com.techandthat.slpmealselection.ui.hideSystemUi
@@ -28,6 +28,7 @@ import com.techandthat.slpmealselection.ui.setupKeyboardSafeLoginScroll
 import com.techandthat.slpmealselection.ui.setupSchoolSpinner
 import com.techandthat.slpmealselection.ui.showSplashThenSetup
 
+// Coordinates setup, kitchen, and child tablet workflows for the app.
 class MainActivity : ComponentActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -64,12 +65,14 @@ class MainActivity : ComponentActivity() {
     private var firebaseStatusMessage: String? = null
     private var isLoadingMeals = false
 
+    // Inflates views, initializes setup UI, and wires primary event listeners.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Apply initial shell configuration for kiosk-like tablet behavior.
         hideSystemUi(window)
         setupSchoolSpinner(this, binding, schools)
         setupKeyboardSafeLoginScroll(binding)
@@ -78,14 +81,24 @@ class MainActivity : ComponentActivity() {
         bindListeners()
     }
 
+    // Attaches all interactive click handlers used by setup/kitchen/child flows.
     private fun bindListeners() {
+        // Login transitions from setup to app mode after credential validation.
         binding.loginButton.setOnClickListener { handleLogin() }
+
+        // Start Service enables service-time behavior and UI state.
         binding.startServiceButton.setOnClickListener {
             serviceStarted = true
             renderAppContent()
         }
+
+        // End Service performs reset and Firestore cleanup confirmation flow.
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
+
+        // Change school opens chooser dialog for active school context.
         binding.changeSchoolButton.setOnClickListener { showChangeSchoolDialog() }
+
+        // Load meals triggers Arbor sync and optional reload confirmation.
         binding.loadTodaysMealsButton.setOnClickListener {
             if (isLoadingMeals || serviceStarted) return@setOnClickListener
 
@@ -103,6 +116,8 @@ class MainActivity : ComponentActivity() {
                 fetchStudentsFromArbor()
             }
         }
+
+        // Child flow: start meal-time moves child tablet into class selection.
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
             selectedClass = null
@@ -111,21 +126,29 @@ class MainActivity : ComponentActivity() {
             childScreen = ChildScreen.CLASS_SELECTION
             renderChildView()
         }
+
+        // Child flow: return from name selection to class selection.
         binding.backToClassesButton.setOnClickListener {
             childScreen = ChildScreen.CLASS_SELECTION
             renderChildView()
         }
+
+        // Child flow: "Oops" returns from success to name selection.
         binding.oopsButton.setOnClickListener {
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
             childScreen = ChildScreen.NAME_SELECTION
             renderChildView()
         }
+
+        // Child flow: continue from success to waiting/class state.
         binding.checkInSuccessButton.setOnClickListener {
             showWaitingOverlayAfterConfirm = true
             childScreen = ChildScreen.CLASS_SELECTION
             renderChildView()
         }
+
+        // Kitchen flow: mark active meal served and return to class-selection route.
         binding.mealServedButton.setOnClickListener {
             activeOrder?.served = true
             activeOrder = null
@@ -134,26 +157,34 @@ class MainActivity : ComponentActivity() {
             childScreen = ChildScreen.CLASS_SELECTION
             renderAppContent()
         }
+
+        // Global: return to setup screen and clear current session UI state.
         binding.backToSetupButton.setOnClickListener { returnToSetup() }
     }
 
+    // Loads branding assets (SLP and TechAndThat logos) into the UI.
     private fun loadBrandAssets() {
+        // Load SLP logo into splash and header areas.
         decodeAssetBitmap(assets, "SLP.jpg")?.let {
             binding.splashLogo.setImageBitmap(it)
             binding.headerLogo.setImageBitmap(it)
         }
 
+        // Load footer branding logo.
         decodeAssetBitmap(assets, "TechandThatLogoWhite.png")?.let {
             binding.footerLogo.setImageBitmap(it)
         }
     }
 
+    // Ensures user is authenticated before reading roster data from Firestore.
     private fun authenticateThenLoadRoster() {
+        // Reuse current user session when available.
         if (authManager.currentUserExists()) {
             loadChildRecordsFromFirestore()
             return
         }
 
+        // Perform anonymous sign-in and then fetch roster.
         authManager.signInAnonymously(
             onSuccess = {
                 loadChildRecordsFromFirestore()
@@ -172,6 +203,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // Starts Arbor sync flow and updates loading state/UI before network call.
     private fun fetchStudentsFromArbor() {
         isLoadingMeals = true
         firebaseStatusMessage = null
@@ -179,6 +211,7 @@ class MainActivity : ComponentActivity() {
         ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
     }
 
+    // Verifies fresh auth token exists prior to invoking callable sync.
     private fun ensureAuthenticatedThenSync(retryOnUnauthenticated: Boolean) {
         authManager.ensureFreshAuth(
             onReady = {
@@ -195,6 +228,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // Calls getArborStudents and persists returned records into Firestore.
     private fun runArborSyncCallable(retryOnUnauthenticated: Boolean) {
         arborSyncService.syncStudents(
             schoolName = selectedSchool,
@@ -202,11 +236,13 @@ class MainActivity : ComponentActivity() {
             onSuccess = { data ->
                 Log.d("ArborIntegration", "Success: $data")
 
+                // Convert payload into validated records for repository upsert.
                 val mapped = ArborPayloadMapper.mapStudentRecords(data)
                 if (mapped.isNotEmpty()) {
                     repository.upsertArborRecords(
                         records = mapped,
                         onSuccess = {
+                            // Refresh local UI data after successful write.
                             loadChildRecordsFromFirestore()
                             isLoadingMeals = false
                             val rateLimited = data?.get("rateLimited") as? Boolean ?: false
@@ -221,6 +257,7 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(this, toastText, Toast.LENGTH_SHORT).show()
                         },
                         onFailure = { error ->
+                            // Surface local write failures and still refresh UI state.
                             Log.e("ArborIntegration", "Client-side Firestore upsert failed", error)
                             isLoadingMeals = false
                             firebaseStatusMessage = "Failed to save meals locally"
@@ -229,6 +266,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 } else {
+                    // Handle empty payloads and optional rate-limit response messaging.
                     isLoadingMeals = false
                     val rateLimited = data?.get("rateLimited") as? Boolean ?: false
                     val message = data?.get("message") as? String
@@ -245,6 +283,8 @@ class MainActivity : ComponentActivity() {
             onFailure = { exception ->
                 val functionsException = exception as? FirebaseFunctionsException
                 val isUnauthenticated = functionsException?.code == FirebaseFunctionsException.Code.UNAUTHENTICATED
+
+                // Retry once with forced re-auth when callable returns UNAUTHENTICATED.
                 if (retryOnUnauthenticated && isUnauthenticated) {
                     Log.w("ArborIntegration", "Callable returned UNAUTHENTICATED, retrying with fresh auth")
                     authManager.signOut()
@@ -252,6 +292,7 @@ class MainActivity : ComponentActivity() {
                     return@syncStudents
                 }
 
+                // Surface final sync failure to kitchen status area and toast.
                 isLoadingMeals = false
                 firebaseStatusMessage = "Failed to sync meals"
                 renderKitchenView()
@@ -261,15 +302,18 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // Loads Firestore child records into in-memory meal list used by both tablet modes.
     private fun loadChildRecordsFromFirestore() {
         repository.loadRecords(
             onSuccess = { records ->
+                // Clear UI data when no rows exist in Firestore.
                 if (records.isEmpty()) {
                     simulatedDatabase.clear()
                     renderAppContent()
                     return@loadRecords
                 }
 
+                // Map records to MealEntry, with fallback meal labels when needed.
                 val mapped = records.map { record ->
                     val meal = record.mealSelected
                         ?.takeIf { it.isNotBlank() }
@@ -292,6 +336,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // Shows school picker dialog and updates selected school when user chooses one.
     private fun showChangeSchoolDialog() {
         val selectedIndex = schools.indexOf(selectedSchool).takeIf { it >= 0 } ?: 0
         AlertDialog.Builder(this)
@@ -305,6 +350,7 @@ class MainActivity : ComponentActivity() {
             .show()
     }
 
+    // Opens confirmation dialog before ending service and deleting records.
     private fun confirmAndEndService() {
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.confirm_end_service_title))
@@ -316,6 +362,7 @@ class MainActivity : ComponentActivity() {
             .show()
     }
 
+    // Resets session state and clears Firestore child records at end of service.
     private fun endServiceAndDeleteRecords() {
         repository.deleteAllRecords(
             onSuccess = {
@@ -338,6 +385,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // Validates login inputs and enters the selected tablet mode.
     private fun handleLogin() {
         val tabletType = resolveTabletType() ?: run {
             showSetupError(getString(R.string.select_tablet_type_error))
@@ -347,6 +395,7 @@ class MainActivity : ComponentActivity() {
         val username = binding.usernameInput.text?.toString()?.trim()?.lowercase().orEmpty()
         val password = binding.passwordInput.text?.toString()?.trim()?.lowercase().orEmpty()
 
+        // Reject invalid credentials before switching into app container.
         if (!isCredentialValid(tabletType, username, password)) {
             showSetupError(getString(R.string.invalid_credentials_error))
             return
@@ -357,10 +406,13 @@ class MainActivity : ComponentActivity() {
         binding.setupErrorText.visibility = View.GONE
         binding.setupContainer.visibility = View.GONE
         binding.appContainer.visibility = View.VISIBLE
+
+        // Authenticate and immediately render mode-specific dashboard.
         authenticateThenLoadRoster()
         renderAppContent()
     }
 
+    // Resolves selected tablet type radio option into TabletType enum.
     private fun resolveTabletType(): TabletType? {
         val checkedId = binding.tabletTypeGroup.checkedRadioButtonId
         if (checkedId == View.NO_ID) return null
@@ -373,26 +425,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Verifies static kiosk credentials for the selected tablet mode.
     private fun isCredentialValid(tabletType: TabletType, username: String, password: String): Boolean = when (tabletType) {
         TabletType.KITCHEN -> username == "k" && password == "k"
         TabletType.CHILD -> username == "c" && password == "c"
     }
 
+    // Displays setup validation error text under login controls.
     private fun showSetupError(message: String) {
         binding.setupErrorText.text = message
         binding.setupErrorText.visibility = View.VISIBLE
     }
 
+    // Returns app to setup screen and clears mode-specific transient state.
     private fun returnToSetup() {
         binding.appContainer.visibility = View.GONE
         binding.setupContainer.visibility = View.VISIBLE
 
+        // Reset setup form fields and selected mode.
         selectedTabletType = null
         binding.tabletTypeGroup.clearCheck()
         binding.usernameInput.text?.clear()
         binding.passwordInput.text?.clear()
         binding.setupErrorText.visibility = View.GONE
 
+        // Reset child flow if last checked-in order was completed.
         if (activeOrder?.served == true) {
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
@@ -402,6 +459,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Delegates rendering to Kitchen or Child view based on selected tablet type.
     private fun renderAppContent() {
         when (selectedTabletType) {
             TabletType.KITCHEN -> renderKitchenView()
@@ -410,6 +468,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Renders kitchen dashboard state, button availability, and prep summary.
     private fun renderKitchenView() {
         binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.kitchen_header_bg))
         binding.headerTitle.text = getString(R.string.kitchen_side)
@@ -420,12 +479,14 @@ class MainActivity : ComponentActivity() {
         binding.kitchenContent.visibility = View.VISIBLE
         binding.childContent.visibility = View.GONE
 
+        // Compute derived kitchen state for rendering.
         val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
         val shouldHideLoadAndStart = serviceStarted
         val outstandingMeals = simulatedDatabase.filterNot { it.served }
         val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
         val hasPrepData = outstandingMeals.isNotEmpty()
 
+        // Update service status messaging and prep card title.
         binding.serviceStatusText.text = if (serviceStarted) {
             getString(R.string.service_status_started)
         } else if (!hasPrepData) {
@@ -445,9 +506,11 @@ class MainActivity : ComponentActivity() {
             )
         )
 
+        // Toggle action button visibility when service begins.
         binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
 
+        // Configure Start Service button enablement and tint.
         binding.startServiceButton.isEnabled = !serviceStarted && hasPrepData
         binding.startServiceButton.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(
@@ -457,6 +520,7 @@ class MainActivity : ComponentActivity() {
         )
         binding.startServiceButton.alpha = if (binding.startServiceButton.isEnabled) 1f else 0.7f
 
+        // Configure Load Meals button enablement and tint.
         val canLoadMeals = !serviceStarted && !isLoadingMeals
         binding.loadTodaysMealsButton.isEnabled = canLoadMeals
         binding.loadTodaysMealsButton.backgroundTintList = ColorStateList.valueOf(
@@ -468,13 +532,16 @@ class MainActivity : ComponentActivity() {
         binding.loadTodaysMealsButton.alpha = if (canLoadMeals) 1f else 0.8f
         binding.loadTodaysMealsButton.text = getString(R.string.load_todays_meals)
 
+        // Show inline prep loading indicator while sync is active.
         binding.prepLoadingText.visibility = if (isLoadingMeals) View.VISIBLE else View.GONE
 
+        // Keep school/end controls visible and set enabled state.
         binding.changeSchoolButton.visibility = View.VISIBLE
         binding.endServiceButton.visibility = View.VISIBLE
         binding.changeSchoolButton.isEnabled = !serviceStarted
         binding.endServiceButton.isEnabled = serviceStarted || simulatedDatabase.isNotEmpty() || activeOrder != null
 
+        // Show firebase status only when a message exists.
         if (firebaseStatusMessage.isNullOrBlank()) {
             binding.firebaseStatusText.visibility = View.GONE
         } else {
@@ -482,8 +549,10 @@ class MainActivity : ComponentActivity() {
             binding.firebaseStatusText.visibility = View.VISIBLE
         }
 
+        // Render grouped meal-prep rows using shared UI helper.
         MealPrepUi.renderMealPrepRows(this, binding, volumes)
 
+        // Show active order card only when service is active and order exists.
         if (serviceStarted && activeOrder != null) {
             binding.kitchenOrderContainer.visibility = View.VISIBLE
             binding.kitchenOrderChildName.text = activeOrder?.name
@@ -493,6 +562,7 @@ class MainActivity : ComponentActivity() {
             binding.kitchenOrderContainer.visibility = View.GONE
         }
 
+        // Reorder major kitchen sections based on whether check-in has begun.
         if (hasCheckInStarted) {
             binding.kitchenContent.removeView(binding.kitchenOrderContainer)
             binding.kitchenContent.addView(binding.kitchenOrderContainer, 0)
@@ -505,10 +575,11 @@ class MainActivity : ComponentActivity() {
             binding.kitchenContent.addView(binding.kitchenOrderContainer)
         }
 
+        // Reset scroll position when re-rendering kitchen dashboard.
         binding.appScrollView.scrollTo(0, 0)
     }
 
-
+    // Renders child dashboard state machine and per-step UI transitions.
     private fun renderChildView() {
         binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.child_orange))
         binding.headerTitle.text = getString(R.string.child_facing)
@@ -524,6 +595,7 @@ class MainActivity : ComponentActivity() {
         binding.contentTitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
         binding.contentSubtitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
 
+        // Gate child flow while service is not started on kitchen tablet.
         if (!serviceStarted) {
             mealTimeStarted = false
             selectedClass = null
@@ -539,12 +611,14 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        // Service is live, so enable child interaction entry point.
         binding.childServiceGateText.text = getString(R.string.child_service_live)
         binding.childServiceGateText.setTextColor(ContextCompat.getColor(this, R.color.child_green))
         binding.contentSubtitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
         binding.childServiceGateText.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
         binding.startMealTimeButton.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
 
+        // Before meal-time begins, keep step container hidden.
         if (!mealTimeStarted) {
             childScreen = ChildScreen.IDLE
             binding.contentTitle.visibility = View.VISIBLE
@@ -556,6 +630,7 @@ class MainActivity : ComponentActivity() {
 
         binding.childStepContainer.visibility = View.VISIBLE
 
+        // Route to the appropriate child step renderer.
         when (childScreen) {
             ChildScreen.IDLE -> {
                 childScreen = ChildScreen.CLASS_SELECTION
@@ -609,6 +684,7 @@ class MainActivity : ComponentActivity() {
             ChildScreen.SUCCESS -> renderSuccessStep(binding)
         }
 
+        // Show waiting overlay after success when returning to class selection.
         val shouldShowOverlay = showWaitingOverlayAfterConfirm && activeOrder != null && childScreen == ChildScreen.CLASS_SELECTION
         binding.waitingOverlay.visibility = if (shouldShowOverlay) View.VISIBLE else View.GONE
     }

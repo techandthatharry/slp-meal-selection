@@ -6,6 +6,9 @@ import com.google.android.material.button.MaterialButton
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import com.techandthat.slpmealselection.model.MealEntry
 
+// Renders child-tablet class/name/success selection steps.
+
+// Builds class selection buttons from outstanding meal records.
 fun renderClassSelectionStep(
     context: Context,
     binding: ActivityMainBinding,
@@ -17,12 +20,15 @@ fun renderClassSelectionStep(
     binding.nameSelectionContainer.visibility = android.view.View.GONE
     binding.checkInSuccessContainer.visibility = android.view.View.GONE
 
+    // Extract unique classes that still have unserved meals.
     val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
 
+    // Resolve visible container height to size generated buttons.
     val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.classSelectionContainer.measuredHeight.takeIf { it > 0 }
 
+    // Retry after layout pass if height is not available yet.
     if (containerHeight == null) {
         binding.classSelectionContainer.post {
             renderClassSelectionStep(
@@ -39,6 +45,7 @@ fun renderClassSelectionStep(
     binding.classButtonsContainer.removeAllViews()
     val classButtonHeight = containerHeight / 4
 
+    // Create one full-width button per class.
     classes.forEach { className ->
         val button = MaterialButton(context).apply {
             text = className
@@ -61,6 +68,7 @@ fun renderClassSelectionStep(
     }
 }
 
+// Builds name selection buttons for children in the selected class.
 fun renderNameSelectionStep(
     context: Context,
     binding: ActivityMainBinding,
@@ -78,18 +86,23 @@ fun renderNameSelectionStep(
 
     binding.nameButtonsContainer.removeAllViews()
 
+    // If class context is missing, return to class step.
     if (selectedClass.isNullOrBlank()) {
         onMissingClass()
         return
     }
 
+    // Filter to children who still need meal check-in.
     val children = simulatedDatabase.filter { !it.served && it.clazz == selectedClass }
+
+    // Resolve available height for dynamic name button sizing.
     val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.nameSelectionContainer.measuredHeight.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
     val childButtonHeight = containerHeight / 5
 
+    // Create one full-width button per child.
     children.forEach { child ->
         val button = MaterialButton(context).apply {
             text = child.name
@@ -112,6 +125,7 @@ fun renderNameSelectionStep(
     }
 }
 
+// Shows final success state after a child check-in is confirmed.
 fun renderSuccessStep(binding: ActivityMainBinding) {
     binding.classSelectionContainer.visibility = android.view.View.GONE
     binding.nameSelectionContainer.visibility = android.view.View.GONE
