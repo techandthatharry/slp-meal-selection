@@ -3,24 +3,22 @@ package com.techandthat.slpmealselection
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.View
-import android.widget.ImageView
 import android.widget.RadioButton
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import com.google.firebase.functions.FirebaseFunctionsException
-import java.util.Locale
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
+import com.techandthat.slpmealselection.network.ArborPayloadMapper
 import com.techandthat.slpmealselection.network.ArborSyncService
 import com.techandthat.slpmealselection.security.AuthManager
 import com.techandthat.slpmealselection.model.ChildScreen
 import com.techandthat.slpmealselection.model.MealEntry
 import com.techandthat.slpmealselection.model.TabletType
+import com.techandthat.slpmealselection.ui.MealPrepUi
 import com.techandthat.slpmealselection.ui.decodeAssetBitmap
 import com.techandthat.slpmealselection.ui.hideSystemUi
 import com.techandthat.slpmealselection.ui.renderClassSelectionStep
@@ -204,42 +202,15 @@ class MainActivity : ComponentActivity() {
             onSuccess = { data ->
                 Log.d("ArborIntegration", "Success: $data")
 
-                @Suppress("UNCHECKED_CAST")
-                val students = data?.get("students") as? List<Map<String, Any>>
-                if (!students.isNullOrEmpty()) {
-                    val mapped = students.mapNotNull { student ->
-                        val documentId = student["documentId"] as? String
-                        val childName = student["childName"] as? String
-                        val className = student["className"] as? String
-                        val schoolName = student["schoolName"] as? String
-                        val source = student["source"] as? String ?: "arbor"
-                        val mealSelected = student["mealSelected"] as? String ?: "Not selected"
-                        @Suppress("UNCHECKED_CAST")
-                        val dietaryRequirements = (student["dietaryRequirements"] as? List<Any>)
-                            ?.mapNotNull { it as? String }
-                            ?: emptyList()
-                        if (documentId.isNullOrBlank() || childName.isNullOrBlank() || className.isNullOrBlank() || schoolName.isNullOrBlank()) {
-                            null
-                        } else {
-                            ChildRecordsRepository.ArborStudentRecord(
-                                documentId = documentId,
-                                childName = childName,
-                                className = className,
-                                schoolName = schoolName,
-                                source = source,
-                                mealSelected = mealSelected,
-                                dietaryRequirements = dietaryRequirements
-                            )
-                        }
-                    }
-
+                val mapped = ArborPayloadMapper.mapStudentRecords(data)
+                if (mapped.isNotEmpty()) {
                     repository.upsertArborRecords(
                         records = mapped,
                         onSuccess = {
                             loadChildRecordsFromFirestore()
                             isLoadingMeals = false
-                            val rateLimited = data.get("rateLimited") as? Boolean ?: false
-                            val message = data.get("message") as? String
+                            val rateLimited = data?.get("rateLimited") as? Boolean ?: false
+                            val message = data?.get("message") as? String
                             val toastText = if (rateLimited) {
                                 message ?: "Arbor rate limited. Please retry in a minute."
                             } else {
@@ -511,7 +482,7 @@ class MainActivity : ComponentActivity() {
             binding.firebaseStatusText.visibility = View.VISIBLE
         }
 
-        renderMealPrepRows(volumes)
+        MealPrepUi.renderMealPrepRows(this, binding, volumes)
 
         if (serviceStarted && activeOrder != null) {
             binding.kitchenOrderContainer.visibility = View.VISIBLE
@@ -537,46 +508,6 @@ class MainActivity : ComponentActivity() {
         binding.appScrollView.scrollTo(0, 0)
     }
 
-    private fun renderMealPrepRows(volumes: Map<String, Int>) {
-        binding.prepSummaryContainer.removeAllViews()
-
-        if (volumes.isEmpty()) {
-            val emptyState = TextView(this).apply {
-                text = getString(R.string.no_meals_loaded)
-                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.meal_count_text))
-                textSize = 20f
-            }
-            binding.prepSummaryContainer.addView(emptyState)
-            return
-        }
-
-        val inflater = LayoutInflater.from(this)
-        volumes.entries
-            .sortedBy { it.key.lowercase(Locale.getDefault()) }
-            .forEach { (mealName, count) ->
-                val row = inflater.inflate(R.layout.item_meal_prep, binding.prepSummaryContainer, false)
-                val iconView = row.findViewById<ImageView>(R.id.mealTypeIcon)
-                val countView = row.findViewById<TextView>(R.id.mealCountText)
-                val nameView = row.findViewById<TextView>(R.id.mealNameText)
-
-                iconView.setImageResource(mealIconFor(mealName))
-                countView.text = getString(R.string.meal_count_format, count)
-                nameView.text = mealName
-                binding.prepSummaryContainer.addView(row)
-            }
-    }
-
-    private fun mealIconFor(mealName: String): Int {
-        val normalized = mealName.lowercase(Locale.getDefault())
-        return when {
-            "wrap" in normalized -> android.R.drawable.ic_menu_upload
-            "fish" in normalized -> android.R.drawable.ic_menu_gallery
-            "potato" in normalized -> android.R.drawable.ic_menu_my_calendar
-            "pasta" in normalized -> android.R.drawable.ic_menu_sort_by_size
-            "curry" in normalized -> android.R.drawable.ic_menu_compass
-            else -> android.R.drawable.ic_menu_info_details
-        }
-    }
 
     private fun renderChildView() {
         binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.child_orange))
