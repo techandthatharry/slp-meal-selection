@@ -21,7 +21,7 @@
     <string name="kitchen_side">Kitchen Side</string>
     <string name="child_facing">Child Facing</string>
     <string name="child_tablet_mode">Child tablet mode</string>
-    <string name="kitchen_dashboard_title">Kitchen Dashboard</string>
+    <string name="kitchen_dashboard_title">Meal Preparation Dashboard</string>
     <string name="load_todays_meals">Load today’s meals</string>
     <string name="load_todays_meals_placeholder">Load today’s meals action coming soon.</string>
     <string name="child_dashboard_title">Canteen Check-In</string>
@@ -29,7 +29,7 @@
     <string name="meals_to_prepare">Meals to prepare</string>
     <string name="meals_to_be_served">Meals to be served</string>
     <string name="all_meals_served">All meals served for today.</string>
-    <string name="powered_by">Powered by tnt</string>
+    <string name="powered_by">Powered by</string>
     <string name="back_to_setup">Change Tablet Mode</string>
     <string name="start_service">Start Service</string>
     <string name="end_service">End today’s service</string>
@@ -61,4 +61,6 @@
     <string name="end_service_with_icon">End today’s service</string>
     <string name="meals_to_prepare_with_icon">Meals to prepare</string>
     <string name="meal_count_format">%1$dx</string>
+    <string name="loading_todays_meals">Loading today’s meals…</string>
+    <string name="no_meals_loaded">No meals have been loaded, click the button.</string>
 </resources>

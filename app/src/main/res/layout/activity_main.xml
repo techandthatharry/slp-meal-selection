@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/kitchen_bg"
-    android:padding="24dp">
+    android:background="@color/kitchen_bg">
 
     <LinearLayout
         android:id="@+id/splashContainer"
@@ -271,7 +270,7 @@
                     android:id="@+id/headerTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/meal_name_text"
+                    android:textColor="@color/white"
                     android:textSize="24sp"
                     android:textStyle="bold" />
 
@@ -280,7 +279,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:textColor="@color/meal_count_text"
+                    android:textColor="@color/white"
                     android:textSize="14sp" />
             </LinearLayout>
 
@@ -367,21 +366,7 @@
                     android:textColor="@color/kitchen_text_primary"
                     android:textSize="30sp"
                     android:textStyle="bold"
-                    android:visibility="gone" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/loadTodaysMealsButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginTop="16dp"
-                    android:backgroundTint="@color/kitchen_accent"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="@string/load_meals_button_with_icon"
-                    android:textAllCaps="false"
-                    android:textColor="@color/white"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:visibility="visible" />
 
                 <TextView
                     android:id="@+id/contentSubtitle"
@@ -399,14 +384,23 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <androidx.cardview.widget.CardView
-                        android:id="@+id/prepListContainer"
+                    <LinearLayout
+                        android:id="@+id/prepAndLoadRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        app:cardBackgroundColor="@color/kitchen_surface"
-                        app:cardCornerRadius="16dp"
-                        app:cardElevation="6dp">
+                        android:gravity="top"
+                        android:orientation="horizontal">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/prepListContainer"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_margin="4dp"
+                            android:layout_weight="1"
+                            app:cardBackgroundColor="@color/meal_prep_cream"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="4dp"
+                            app:cardUseCompatPadding="true">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -429,15 +423,51 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="10dp"
                                 android:orientation="vertical" />
+
+                            <TextView
+                                android:id="@+id/prepLoadingText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/loading_todays_meals"
+                                android:textColor="@color/kitchen_text_secondary"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:visibility="gone" />
                         </LinearLayout>
-                    </androidx.cardview.widget.CardView>
+                        </androidx.cardview.widget.CardView>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/loadTodaysMealsButton"
+                            android:layout_width="128dp"
+                            android:layout_height="match_parent"
+                            android:layout_gravity="top"
+                            android:layout_marginStart="12dp"
+                            android:layout_marginTop="4dp"
+                            android:layout_marginBottom="4dp"
+                            android:backgroundTint="@color/kitchen_accent"
+                            android:gravity="center"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:paddingHorizontal="8dp"
+                            android:text="@string/load_todays_meals"
+                            android:textAllCaps="false"
+                            android:textColor="@color/white"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            app:icon="@android:drawable/stat_sys_upload"
+                            app:iconGravity="textTop"
+                            app:iconPadding="6dp"
+                            app:iconSize="30dp"
+                            app:iconTint="@color/white" />
+                    </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/serviceControlContainer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:background="@color/kitchen_surface"
+                        android:background="@color/kitchen_bg"
                         android:orientation="vertical"
                         android:padding="16dp">
 
