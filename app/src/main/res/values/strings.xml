@@ -66,4 +66,8 @@
     <string name="reload_meals_title">Reload today’s meals?</string>
     <string name="reload_meals_message">Are you sure you want to reload today’s meals?</string>
     <string name="service_status_ready_to_load">Press Load today’s meals to begin.</string>
+    <string name="service_status_ready_to_start">Press the Start Service button when you are ready to serve meals.</string>
+    <string name="service_status_paused">Service paused. Child check-in is temporarily disabled.</string>
+    <string name="pause_service_button_with_icon">Pause service</string>
+    <string name="resume_service_button_with_icon">Resume service</string>
 </resources>

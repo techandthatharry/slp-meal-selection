@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
     private var showWaitingOverlayAfterConfirm = false
     private var firebaseStatusMessage: String? = null
     private var isLoadingMeals = false
+    private var servicePausedByKitchen = false
 
     // Inflates views, initializes setup UI, and wires primary event listeners.
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,6 +90,13 @@ class MainActivity : ComponentActivity() {
         // Start Service enables service-time behavior and UI state.
         binding.startServiceButton.setOnClickListener {
             serviceStarted = true
+            servicePausedByKitchen = false
+            renderAppContent()
+        }
+
+        // Pause/Resume Service lets kitchen temporarily stop child check-ins.
+        binding.pauseServiceButton.setOnClickListener {
+            servicePausedByKitchen = !servicePausedByKitchen
             renderAppContent()
         }
 
@@ -371,6 +379,7 @@ class MainActivity : ComponentActivity() {
                 selectedClass = null
                 showWaitingOverlayAfterConfirm = false
                 serviceStarted = false
+                servicePausedByKitchen = false
                 mealTimeStarted = false
                 childScreen = ChildScreen.IDLE
                 renderAppContent()
@@ -487,12 +496,14 @@ class MainActivity : ComponentActivity() {
         val hasPrepData = outstandingMeals.isNotEmpty()
 
         // Update service status messaging and prep card title.
-        binding.serviceStatusText.text = if (serviceStarted) {
+        binding.serviceStatusText.text = if (serviceStarted && servicePausedByKitchen) {
+            getString(R.string.service_status_paused)
+        } else if (serviceStarted) {
             getString(R.string.service_status_started)
         } else if (!hasPrepData) {
             getString(R.string.service_status_ready_to_load)
         } else {
-            ""
+            getString(R.string.service_status_ready_to_start)
         }
         binding.prepListTitle.text = if (serviceStarted) {
             getString(R.string.meals_to_be_served)
@@ -502,13 +513,18 @@ class MainActivity : ComponentActivity() {
         binding.serviceStatusText.setTextColor(
             ContextCompat.getColor(
                 this,
-                if (serviceStarted) R.color.kitchen_success else R.color.kitchen_text_secondary
+                when {
+                    serviceStarted && servicePausedByKitchen -> R.color.kitchen_danger
+                    serviceStarted -> R.color.kitchen_success
+                    else -> R.color.kitchen_text_secondary
+                }
             )
         )
 
         // Toggle action button visibility when service begins.
         binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
+        binding.pauseServiceButton.visibility = if (serviceStarted) View.VISIBLE else View.GONE
 
         // Configure Start Service button enablement and tint.
         binding.startServiceButton.isEnabled = !serviceStarted && hasPrepData
@@ -519,6 +535,16 @@ class MainActivity : ComponentActivity() {
             )
         )
         binding.startServiceButton.alpha = if (binding.startServiceButton.isEnabled) 1f else 0.7f
+
+        // Configure Pause Service button label/tint while service is active.
+        binding.pauseServiceButton.text = if (servicePausedByKitchen) {
+            getString(R.string.resume_service_button_with_icon)
+        } else {
+            getString(R.string.pause_service_button_with_icon)
+        }
+        binding.pauseServiceButton.backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.kitchen_accent)
+        )
 
         // Configure Load Meals button enablement and tint.
         val canLoadMeals = !serviceStarted && !isLoadingMeals
@@ -596,13 +622,17 @@ class MainActivity : ComponentActivity() {
         binding.contentSubtitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
 
         // Gate child flow while service is not started on kitchen tablet.
-        if (!serviceStarted) {
+        if (!serviceStarted || servicePausedByKitchen) {
             mealTimeStarted = false
             selectedClass = null
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
             childScreen = ChildScreen.IDLE
-            binding.childServiceGateText.text = getString(R.string.child_waiting_for_service)
+            binding.childServiceGateText.text = if (servicePausedByKitchen) {
+                getString(R.string.service_status_paused)
+            } else {
+                getString(R.string.child_waiting_for_service)
+            }
             binding.childServiceGateText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
             binding.contentSubtitle.visibility = View.GONE
             binding.startMealTimeButton.visibility = View.GONE
