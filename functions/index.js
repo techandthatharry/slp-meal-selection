@@ -494,52 +494,59 @@ exports.getArborStudents = onCall(
 
         const detailedStudents = [];
         let rateLimitedDuringDetails = false;
-        let rowsAttempted = 0;
+        let rowsAttempted = pageRows.length;
 
-        // Expand summary rows via href detail requests when person is absent.
-        for (let i = 0; i < pageRows.length; i++) {
-          const student = pageRows[i];
-          rowsAttempted = i + 1;
+        // Fetch detail for each summary row in parallel chunks of 10.
+        const PARALLEL_CHUNK = 10;
+        for (let i = 0; i < pageRows.length; i += PARALLEL_CHUNK) {
+          const chunk = pageRows.slice(i, i + PARALLEL_CHUNK);
 
-          // Use row directly if full person details already exist.
-          if (student && student.person) {
-            detailedStudents.push(student);
-            continue;
+          // Fetch all rows in this chunk simultaneously.
+          const chunkResults = await Promise.all(
+              chunk.map(async (student, chunkIndex) => {
+                // Row already has full person data — no detail fetch needed.
+                if (student && student.person) return {ok: true, student};
+
+                const href = student && student.href;
+                if (!href) return {ok: false, student: null};
+
+                try {
+                  const detailResponse = await fetch(
+                      `https://api-sandbox2.uk.arbor.sc${href}?format=json`,
+                      {method: "GET", headers: authHeaders},
+                  );
+                  if (!detailResponse.ok) {
+                    if (detailResponse.status === 429) {
+                      return {ok: false, rateLimited: true, student: null};
+                    }
+                    return {ok: false, student: null};
+                  }
+                  const detailJson = await detailResponse.json();
+                  const detailStudent = extractStudents(detailJson)[0];
+                  return {ok: true, student: detailStudent || null};
+                } catch (err) {
+                  logger.warn("Failed to fetch Arbor student detail", {
+                    href,
+                    error: err.message || "unknown",
+                    chunkIndex,
+                  });
+                  return {ok: false, student: null};
+                }
+              }),
+          );
+
+          // Check for rate limiting in this chunk.
+          const hitRateLimit = chunkResults.some((r) => r.rateLimited);
+          if (hitRateLimit) {
+            rowsAttempted = i;
+            rateLimitedDuringDetails = true;
+            break;
           }
 
-          const href = student && student.href;
-          if (!href) continue;
-
-          try {
-            const detailResponse = await fetch(
-                `https://api-sandbox2.uk.arbor.sc${href}?format=json`,
-                {
-                  method: "GET",
-                  headers: authHeaders,
-                },
-            );
-
-            // Stop detail loop when Arbor begins rate-limiting detail requests.
-            if (!detailResponse.ok) {
-              if (detailResponse.status === 429) {
-                // Back up one row so this student is retried in the next batch.
-                rowsAttempted = Math.max(0, i);
-                rateLimitedDuringDetails = true;
-                break;
-              }
-              continue;
-            }
-
-            // Extract the first student row from detail payload.
-            const detailJson = await detailResponse.json();
-            const detailStudent = extractStudents(detailJson)[0];
-            if (detailStudent) detailedStudents.push(detailStudent);
-          } catch (detailError) {
-            logger.warn("Failed to fetch Arbor student detail", {
-              href,
-              error: detailError.message || "unknown",
-            });
-          }
+          // Add successfully fetched students for this chunk.
+          chunkResults.forEach((r) => {
+            if (r.ok && r.student) detailedStudents.push(r.student);
+          });
         }
         // Map Arbor rows into app-ready student records.
         const students = detailedStudents

@@ -239,6 +239,7 @@ class MainActivity : ComponentActivity() {
     private fun fetchStudentsFromArbor() {
         isLoadingMeals = true
         firebaseStatusMessage = null
+        binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
         renderKitchenView()
         ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
     }
@@ -458,7 +459,8 @@ class MainActivity : ComponentActivity() {
     // Uploads Arbor billing queue, then clears child records and resets local session state.
     private fun endServiceAndDeleteRecords() {
         isLoadingMeals = true
-        firebaseStatusMessage = "Uploading billing queue to Arbor sandbox..."
+        firebaseStatusMessage = null
+        binding.prepLoadingText.text = getString(R.string.uploading_to_arbor)
         renderKitchenView()
         ensureAuthenticatedThenUploadBillingQueue(retryOnUnauthenticated = true)
     }

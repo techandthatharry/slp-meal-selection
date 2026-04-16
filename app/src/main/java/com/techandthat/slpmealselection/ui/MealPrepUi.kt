@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import com.techandthat.slpmealselection.R
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import java.util.Locale
@@ -20,10 +21,12 @@ object MealPrepUi {
 
         // Show empty placeholder when no prep data exists.
         if (volumes.isEmpty()) {
+            val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
             val emptyState = TextView(context).apply {
                 text = context.getString(R.string.no_meals_loaded)
                 setTextColor(ContextCompat.getColor(context, R.color.meal_count_text))
                 textSize = 20f
+                typeface = gothamTypeface
             }
             binding.prepSummaryContainer.addView(emptyState)
             return
@@ -52,7 +55,7 @@ object MealPrepUi {
         val normalized = mealName.lowercase(Locale.getDefault())
         return when {
             "pizza" in normalized -> "🍕"
-            "pasta" in normalized || "spaghetti" in normalized || "mac" in normalized -> "🍜"
+            "pasta" in normalized || "spaghetti" in normalized || "mac" in normalized -> "🍝"
             "chicken" in normalized || "drumstick" in normalized || "nugget" in normalized -> "🍗"
             "fish" in normalized || "chips" in normalized -> "🐟"
             "curry" in normalized || "rice" in normalized -> "🍛"

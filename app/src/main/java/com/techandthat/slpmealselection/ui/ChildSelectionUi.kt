@@ -2,7 +2,9 @@ package com.techandthat.slpmealselection.ui
 
 import android.content.Context
 import android.widget.LinearLayout
+import androidx.core.content.res.ResourcesCompat
 import com.google.android.material.button.MaterialButton
+import com.techandthat.slpmealselection.R
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import com.techandthat.slpmealselection.model.MealEntry
 
@@ -45,13 +47,17 @@ fun renderClassSelectionStep(
     binding.classButtonsContainer.removeAllViews()
     val classButtonHeight = containerHeight / 4
 
+    val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
+
     // Create one full-width button per class.
     classes.forEach { className ->
         val button = MaterialButton(context).apply {
             text = className
             textSize = 34f
             isAllCaps = false
+            typeface = gothamTypeface
             setPadding(24, 24, 24, 24)
+            cornerRadius = 0
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 classButtonHeight
@@ -102,13 +108,17 @@ fun renderNameSelectionStep(
         ?: context.resources.displayMetrics.heightPixels
     val childButtonHeight = (containerHeight / 6).coerceAtMost(180)
 
+    val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
+
     // Create one full-width button per child.
     children.forEach { child ->
         val button = MaterialButton(context).apply {
             text = child.name
             textSize = 34f
             isAllCaps = false
+            typeface = gothamTypeface
             setPadding(24, 24, 24, 24)
+            cornerRadius = 0
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 childButtonHeight
@@ -130,7 +140,7 @@ private fun mealIconFor(mealName: String): String {
     val normalized = mealName.lowercase()
     return when {
         normalized.contains("pizza") -> "🍕"
-        normalized.contains("pasta") || normalized.contains("spaghetti") || normalized.contains("mac") -> "🍜"
+        normalized.contains("pasta") || normalized.contains("spaghetti") || normalized.contains("mac") -> "🍝"
         normalized.contains("fish") -> "🐟"
         normalized.contains("chicken") -> "🍗"
         normalized.contains("wrap") -> "🌯"
@@ -153,7 +163,7 @@ fun renderSuccessStep(binding: ActivityMainBinding, activeOrder: MealEntry?) {
     val icon = mealIconFor(mealLabel)
     binding.checkInSuccessButton.text =
         binding.root.context.getString(
-            com.techandthat.slpmealselection.R.string.child_success_button_meal,
+            R.string.child_success_button_meal,
             icon,
             mealLabel
         )

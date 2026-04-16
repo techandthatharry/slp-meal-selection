@@ -71,4 +71,5 @@
     <string name="child_success_button_meal">%1$s\n%2$s</string>
     <string name="pause_service_button_with_icon">Pause service</string>
     <string name="resume_service_button_with_icon">Resume service</string>
+    <string name="uploading_to_arbor">Uploading meal information to Arbor&#8230;</string>
 </resources>
