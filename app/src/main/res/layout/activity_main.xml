@@ -489,8 +489,9 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="16dp"
                                     android:layout_marginTop="10dp"
-                                    android:indeterminate="true"
-                                    android:indeterminateTint="@color/kitchen_success"
+                                    android:indeterminate="false"
+                                    android:max="100"
+                                    android:progress="0"
                                     android:progressTint="@color/kitchen_success"
                                     android:progressBackgroundTint="@color/button_secondary_border"
                                     android:visibility="gone" />

@@ -103,7 +103,7 @@ internal fun MainActivity.renderKitchenView() {
     }
     binding.loadTodaysMealsButton.text = getString(R.string.load_todays_meals)
 
-    // Show inline prep loading indicator and progress bar while sync is active.
+    // Show inline loading indicator and determinate progress bar while sync is active.
     if (isLoadingMeals) {
         binding.prepLoadingText.visibility = View.VISIBLE
         binding.prepLoadingProgress.visibility = View.VISIBLE
@@ -116,17 +116,16 @@ internal fun MainActivity.renderKitchenView() {
                 syncProgressTotal,
                 pct
             )
-            binding.prepLoadingProgress.isIndeterminate = false
-            binding.prepLoadingProgress.max = syncProgressTotal
-            binding.prepLoadingProgress.progress = syncProgressCurrent
+            // Bar uses 0-100 percentage scale for reliable determinate rendering.
+            binding.prepLoadingProgress.progress = pct
         } else {
+            // Total not yet known — show 0% bar and generic label.
             binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
-            binding.prepLoadingProgress.isIndeterminate = true
+            binding.prepLoadingProgress.progress = 0
         }
     } else {
         binding.prepLoadingText.visibility = View.GONE
         binding.prepLoadingProgress.visibility = View.GONE
-        binding.prepLoadingProgress.isIndeterminate = true
         syncProgressCurrent = 0
         syncProgressTotal = 0
     }

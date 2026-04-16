@@ -12,6 +12,16 @@ if (admin.apps.length === 0) {
 const db = admin.firestore();
 
 /**
+ * Pauses execution for a given number of milliseconds.
+ *
+ * @param {number} ms Milliseconds to sleep.
+ * @return {Promise<void>} Resolves after the delay.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Returns the first non-empty value.
  *
  * @param {...*} values Candidate values.
@@ -420,13 +430,206 @@ async function postBillingItemToArbor(queueItem, docId, headers) {
   };
 }
 
+// Callable endpoint to pre-build a studentId → className map from Arbor.
+// Fetches all current-year registration forms and their memberships,
+// then stores className for each student in arborClassMap/{studentId}.
+exports.buildArborClassMap = onCall(
+    {
+      region: "europe-west2",
+      invoker: "public",
+      enforceAppCheck: false,
+      // 360s handles ~15 real-school forms + ~450 membership details.
+      timeoutSeconds: 360,
+    },
+    async (request) => {
+      const schoolName = (
+        request.data &&
+        typeof request.data.schoolName === "string" &&
+        request.data.schoolName.trim()
+      ) || "Arbor Sandbox";
+      const formOffset = Number(request.data && request.data.formOffset) || 0;
+      const formBatchSize = 20; // fetch this many forms per callable invocation
+
+      const {username, password} = getArborCredentials();
+      const authHeaders = buildArborAuthHeaders(username, password);
+      const DELAY_MS = 750;
+
+      try {
+        // Determine current academic year by today's date.
+        const yearListResp = await fetch(
+            "https://api-sandbox2.uk.arbor.sc/rest-v2/academic-years" +
+            "?format=json",
+            {method: "GET", headers: authHeaders},
+        );
+        if (!yearListResp.ok) {
+          return {
+            success: false,
+            message: "Failed to fetch academic years: HTTP " +
+              yearListResp.status,
+          };
+        }
+        await sleep(DELAY_MS);
+        const yearJson = await yearListResp.json();
+        const allYears = (yearJson && yearJson.academicYears) || [];
+
+        // Pick the academic year whose range contains today.
+        const today = new Date();
+        let currentYearHref = null;
+        for (const yr of allYears) {
+          if (!yr.href) continue;
+          // Fetch year detail to check start/end dates (list has hrefs only).
+          const yrResp = await fetch(
+              `https://api-sandbox2.uk.arbor.sc${yr.href}?format=json`,
+              {method: "GET", headers: authHeaders},
+          );
+          await sleep(DELAY_MS);
+          if (!yrResp.ok) continue;
+          const yrJson = await yrResp.json();
+          const yrData = yrJson && yrJson.academicYear;
+          if (!yrData) continue;
+          const start = yrData.startDate ? new Date(yrData.startDate) : null;
+          const end = yrData.endDate ? new Date(yrData.endDate) : null;
+          if (start && end && today >= start && today <= end) {
+            currentYearHref = yr.href;
+            break;
+          }
+        }
+
+        if (!currentYearHref) {
+          return {
+            success: false,
+            message: "Could not determine current academic year.",
+          };
+        }
+
+        // Fetch all registration forms for the current academic year.
+        const formsResp = await fetch(
+            "https://api-sandbox2.uk.arbor.sc/rest-v2/registration-forms" +
+            `?academicYear=${encodeURIComponent(currentYearHref)}&format=json`,
+            {method: "GET", headers: authHeaders},
+        );
+        await sleep(DELAY_MS);
+        if (!formsResp.ok) {
+          return {
+            success: false,
+            message: "Failed to fetch registration forms: HTTP " +
+              formsResp.status,
+          };
+        }
+        const formsJson = await formsResp.json();
+        const allFormHrefs = (formsJson && formsJson.registrationForms) || [];
+        const totalForms = allFormHrefs.length;
+
+        // Paginate through forms in batches.
+        const formBatchEnd = Math.min(formOffset + formBatchSize, totalForms);
+        const formsBatch = allFormHrefs.slice(formOffset, formBatchEnd);
+
+        let entriesWritten = 0;
+        const firestoreBatch = db.batch();
+
+        for (const formRef of formsBatch) {
+          await sleep(DELAY_MS);
+          try {
+            const formDetailResp = await fetch(
+                `https://api-sandbox2.uk.arbor.sc${formRef.href}?format=json`,
+                {method: "GET", headers: authHeaders},
+            );
+            if (!formDetailResp.ok) continue;
+            const formDetail = await formDetailResp.json();
+            const form = formDetail && formDetail.registrationForm;
+            if (!form) continue;
+
+            const className =
+              form.shortName ||
+              form.registrationFormName ||
+              "Unknown";
+            const memberships = form.studentMemberships || [];
+
+            for (const membership of memberships) {
+              await sleep(DELAY_MS);
+              try {
+                const memResp = await fetch(
+                    `https://api-sandbox2.uk.arbor.sc${membership.href}` +
+                    "?format=json",
+                    {method: "GET", headers: authHeaders},
+                );
+                if (!memResp.ok) continue;
+                const memJson = await memResp.json();
+                const memData = memJson && memJson.registrationFormMembership;
+                const student = memData && memData.student;
+                if (!student || !student.id) continue;
+
+                // Store className keyed by Arbor student ID (no personal data).
+                const docRef = db.collection("arborClassMap")
+                    .doc(String(student.id));
+                firestoreBatch.set(docRef, {
+                  className,
+                  academicYearHref: currentYearHref,
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, {merge: true});
+                entriesWritten++;
+              } catch (memErr) {
+                logger.warn("Failed to fetch membership detail", {
+                  href: membership.href,
+                  error: memErr && memErr.message,
+                });
+              }
+            }
+          } catch (formErr) {
+            logger.warn("Failed to fetch form detail", {
+              href: formRef.href,
+              error: formErr && formErr.message,
+            });
+          }
+        }
+
+        if (entriesWritten > 0) await firestoreBatch.commit();
+
+        const nextFormOffset = formBatchEnd;
+        const hasMore = nextFormOffset < totalForms;
+
+        logger.info("Arbor class map batch complete", {
+          schoolName,
+          formOffset,
+          formBatchEnd,
+          totalForms,
+          entriesWritten,
+          hasMore,
+        });
+
+        return {
+          success: true,
+          schoolName,
+          formOffset,
+          nextFormOffset,
+          totalForms,
+          entriesWritten,
+          hasMore,
+          message: hasMore ?
+            `Class map batch: ${nextFormOffset}/${totalForms} forms done.` :
+            `Class map built. ${entriesWritten} entries written.`,
+        };
+      } catch (error) {
+        logger.error("buildArborClassMap error", {
+          message: error && error.message ? error.message : "unknown",
+        });
+        return {
+          success: false,
+          message: "Class map build failed.",
+          errorMessage: error && error.message ? error.message : "unknown",
+        };
+      }
+    },
+);
+
 // Callable endpoint to pull Arbor students and upsert them into Firestore.
 exports.getArborStudents = onCall(
     {
       region: "europe-west2",
       invoker: "public",
       enforceAppCheck: false,
-      timeoutSeconds: 120,
+      // 360s = 300 students × 750ms/req ≈ 225s + overhead + retry sleeps.
+      timeoutSeconds: 360,
     },
     async (request) => {
       const schoolName = (
@@ -437,9 +640,10 @@ exports.getArborStudents = onCall(
       const requestedMaxRecords = Number(
           request.data && request.data.maxRecords,
       );
+      // Cap at 50: 50 × 750ms/request ≈ 37.5s, safely within the 360s timeout.
       const maxRecords =
         Number.isFinite(requestedMaxRecords) && requestedMaxRecords > 0 ?
-          Math.min(Math.floor(requestedMaxRecords), 300) :
+          Math.min(Math.floor(requestedMaxRecords), 50) :
           50;
       const requestedOffset = Number(
           request.data && request.data.offset,
@@ -496,61 +700,129 @@ exports.getArborStudents = onCall(
         let rateLimitedDuringDetails = false;
         let rowsAttempted = pageRows.length;
 
-        // Fetch detail for each summary row in parallel chunks of 10.
-        const PARALLEL_CHUNK = 10;
-        for (let i = 0; i < pageRows.length; i += PARALLEL_CHUNK) {
-          const chunk = pageRows.slice(i, i + PARALLEL_CHUNK);
+        // Fetch each student sequentially with a fixed delay.
+        // Keeps rate well below Arbor's ~100/minute limit.
+        const INTER_REQUEST_DELAY_MS = 750; // ~80 req/min
+        const MAX_RETRIES_ON_429 = 3;
+        const DEFAULT_RETRY_AFTER_MS = 65000; // 65s fallback
 
-          // Fetch all rows in this chunk simultaneously.
-          const chunkResults = await Promise.all(
-              chunk.map(async (student, chunkIndex) => {
-                // Row already has full person data — no detail fetch needed.
-                if (student && student.person) return {ok: true, student};
+        for (let i = 0; i < pageRows.length; i++) {
+          const student = pageRows[i];
 
-                const href = student && student.href;
-                if (!href) return {ok: false, student: null};
+          // Add inter-request delay for all requests after the first.
+          if (i > 0) await sleep(INTER_REQUEST_DELAY_MS);
 
-                try {
-                  const detailResponse = await fetch(
-                      `https://api-sandbox2.uk.arbor.sc${href}?format=json`,
-                      {method: "GET", headers: authHeaders},
-                  );
-                  if (!detailResponse.ok) {
-                    if (detailResponse.status === 429) {
-                      return {ok: false, rateLimited: true, student: null};
-                    }
-                    return {ok: false, student: null};
-                  }
-                  const detailJson = await detailResponse.json();
-                  const detailStudent = extractStudents(detailJson)[0];
-                  return {ok: true, student: detailStudent || null};
-                } catch (err) {
-                  logger.warn("Failed to fetch Arbor student detail", {
-                    href,
-                    error: err.message || "unknown",
-                    chunkIndex,
-                  });
-                  return {ok: false, student: null};
-                }
-              }),
-          );
-
-          // Check for rate limiting in this chunk.
-          const hitRateLimit = chunkResults.some((r) => r.rateLimited);
-          if (hitRateLimit) {
-            rowsAttempted = i;
-            rateLimitedDuringDetails = true;
-            break;
+          // Row already has full person data — no detail fetch needed.
+          if (student && student.person) {
+            detailedStudents.push(student);
+            continue;
           }
 
-          // Add successfully fetched students for this chunk.
-          chunkResults.forEach((r) => {
-            if (r.ok && r.student) detailedStudents.push(r.student);
+          const href = student && student.href;
+          if (!href) continue;
+
+          let fetched = false;
+          let retries = 0;
+
+          while (!fetched && retries <= MAX_RETRIES_ON_429) {
+            try {
+              const detailResponse = await fetch(
+                  `https://api-sandbox2.uk.arbor.sc${href}?format=json`,
+                  {method: "GET", headers: authHeaders},
+              );
+
+              if (detailResponse.status === 429) {
+                if (retries >= MAX_RETRIES_ON_429) {
+                  // Exhausted retries — record position and stop this page.
+                  logger.warn("Arbor rate limit hit after max retries", {
+                    studentIndex: i,
+                  });
+                  rowsAttempted = i;
+                  rateLimitedDuringDetails = true;
+                  break;
+                }
+                // Respect Retry-After header if present, otherwise use default.
+                const retryAfterHeader =
+                  detailResponse.headers.get("Retry-After");
+                const retryAfterMs = retryAfterHeader ?
+                  parseInt(retryAfterHeader, 10) * 1000 :
+                  DEFAULT_RETRY_AFTER_MS;
+                logger.info("Rate limited — sleeping before retry", {
+                  studentIndex: i,
+                  retryAfterMs,
+                  attempt: retries + 1,
+                });
+                await sleep(retryAfterMs);
+                retries++;
+                continue;
+              }
+
+              if (!detailResponse.ok) {
+                // Non-rate-limit error — skip this student and move on.
+                logger.warn("Arbor detail fetch failed", {
+                  href,
+                  status: detailResponse.status,
+                });
+                fetched = true; // mark done so we don't retry
+                continue;
+              }
+
+              const detailJson = await detailResponse.json();
+              const detailStudent = extractStudents(detailJson)[0];
+              if (detailStudent) detailedStudents.push(detailStudent);
+              fetched = true;
+            } catch (err) {
+              logger.warn("Exception fetching Arbor student detail", {
+                href,
+                error: err.message || "unknown",
+                studentIndex: i,
+              });
+              fetched = true; // skip on network error
+            }
+          }
+
+          // Stop processing further students if rate limit was unrecoverable.
+          if (rateLimitedDuringDetails) break;
+        }
+        // Load pre-built class map from Firestore for className lookup.
+        // Keyed by Arbor student ID. Falls back to "Unknown" if missing.
+        const classMapCache = {};
+        try {
+          const studentIds = detailedStudents
+              .map((s) => s && s.id)
+              .filter((id) => id != null)
+              .map(String);
+          if (studentIds.length > 0) {
+            // Firestore `in` max 30 values — batch larger lists.
+            const batchSize = 30;
+            for (let ci = 0; ci < studentIds.length; ci += batchSize) {
+              const idBatch = studentIds.slice(ci, ci + batchSize);
+              const mapDocs = await db.collection("arborClassMap")
+                  .where(admin.firestore.FieldPath.documentId(), "in", idBatch)
+                  .get();
+              mapDocs.forEach((doc) => {
+                classMapCache[doc.id] = doc.data().className || "Unknown";
+              });
+            }
+          }
+        } catch (cacheErr) {
+          logger.warn("arborClassMap read failed — className will be Unknown", {
+            error: cacheErr && cacheErr.message ? cacheErr.message : "unknown",
           });
         }
-        // Map Arbor rows into app-ready student records.
+
+        // Map Arbor rows into app-ready student records, injecting className.
         const students = detailedStudents
-            .map((student, index) => mapArborStudent(student, index))
+            .map((student, index) => {
+              const mapped = mapArborStudent(student, index);
+              if (!mapped) return null;
+              // Override "Unknown" with class map value when available.
+              const studentId = student && student.id;
+              if (studentId && classMapCache[String(studentId)]) {
+                mapped.className = classMapCache[String(studentId)];
+              }
+              return mapped;
+            })
             .filter((student) => student !== null);
 
         // Build Firestore payloads with school-scoped deterministic IDs.

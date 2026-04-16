@@ -18,15 +18,12 @@ internal fun MainActivity.fetchStudentsFromArbor() {
 }
 
 // Verifies a fresh auth token exists prior to invoking the callable sync.
+@Suppress("UNUSED_PARAMETER")
 internal fun MainActivity.ensureAuthenticatedThenSync(retryOnUnauthenticated: Boolean) {
     authManager.ensureFreshAuth(
         onReady = {
-            runArborSyncCallable(
-                retryOnUnauthenticated = retryOnUnauthenticated,
-                offset = 0,
-                totalWritten = 0,
-                knownTotal = null
-            )
+            // Build class map first; student sync starts only after map is complete.
+            runClassMapBuild(formOffset = 0, totalForms = null)
         },
         onFailure = { error ->
             val failureMessage = getString(
@@ -35,6 +32,52 @@ internal fun MainActivity.ensureAuthenticatedThenSync(retryOnUnauthenticated: Bo
             )
             Log.e("ArborIntegration", "Auth failed before sync", error)
             Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+        }
+    )
+}
+
+// Builds arborClassMap in batches; transitions to student sync when complete.
+internal fun MainActivity.runClassMapBuild(formOffset: Int, totalForms: Int?) {
+    val progressText = if (totalForms != null && totalForms > 0)
+        "Building class map… $formOffset/$totalForms forms"
+    else
+        "Building class map…"
+    firebaseStatusMessage = progressText
+    renderKitchenView()
+
+    arborSyncService.buildClassMap(
+        schoolName = selectedSchool,
+        formOffset = formOffset,
+        onSuccess = { data ->
+            val hasMore = data?.get("hasMore") as? Boolean ?: false
+            val nextOffset = (data?.get("nextFormOffset") as? Number)?.toInt() ?: formOffset
+            val total = (data?.get("totalForms") as? Number)?.toInt() ?: totalForms
+
+            Log.d("ArborClassMap", "Class map batch done: formOffset=$formOffset next=$nextOffset total=$total hasMore=$hasMore")
+
+            if (hasMore) {
+                runClassMapBuild(formOffset = nextOffset, totalForms = total)
+            } else {
+                Log.d("ArborClassMap", "Class map fully built — starting student sync")
+                firebaseStatusMessage = null
+                runArborSyncCallable(
+                    retryOnUnauthenticated = true,
+                    offset = 0,
+                    totalWritten = 0,
+                    knownTotal = null
+                )
+            }
+        },
+        onFailure = { error ->
+            // Class map is optional — log the failure and continue student sync.
+            Log.w("ArborClassMap", "Class map build failed (students will have Unknown class)", error)
+            firebaseStatusMessage = null
+            runArborSyncCallable(
+                retryOnUnauthenticated = true,
+                offset = 0,
+                totalWritten = 0,
+                knownTotal = null
+            )
         }
     )
 }
