@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
@@ -196,8 +197,8 @@ class MainActivity : ComponentActivity() {
 
     // Loads branding assets (SLP and TechAndThat logos) into the UI.
     private fun loadBrandAssets() {
-        // Load SLP logo into splash and header areas.
-        decodeAssetBitmap(assets, "SLP.jpg")?.let {
+        // Load SLP logo into splash and header areas (PNG with transparent background).
+        decodeAssetBitmap(assets, "SLP.png")?.let {
             binding.splashLogo.setImageBitmap(it)
             binding.headerLogo.setImageBitmap(it)
         }
@@ -391,6 +392,7 @@ class MainActivity : ComponentActivity() {
     // Loads Firestore child records into in-memory meal list used by both tablet modes.
     private fun loadChildRecordsFromFirestore() {
         repository.loadRecords(
+            schoolName = selectedSchool,
             onSuccess = { records ->
                 // Clear UI data when no rows exist in Firestore.
                 if (records.isEmpty()) {
@@ -437,6 +439,11 @@ class MainActivity : ComponentActivity() {
             .setTitle(getString(R.string.change_school))
             .setSingleChoiceItems(schools.toTypedArray(), selectedIndex) { dialog, which ->
                 selectedSchool = schools[which]
+                // Clear in-memory meals so the previous school's data doesn't linger.
+                simulatedDatabase.clear()
+                activeOrder = null
+                // Reload Firestore records scoped to the newly selected school.
+                loadChildRecordsFromFirestore()
                 renderAppContent()
                 dialog.dismiss()
             }
@@ -525,6 +532,7 @@ class MainActivity : ComponentActivity() {
                 renderKitchenView()
 
                 repository.deleteAllRecords(
+                    schoolName = selectedSchool,
                     onSuccess = {
                         simulatedDatabase.clear()
                         activeOrder = null
@@ -671,6 +679,33 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Applies solid-fill primary button style (blue background, white text, no stroke).
+    private fun applyPrimaryButtonStyle(button: MaterialButton) {
+        button.backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.kitchen_success)
+        )
+        button.setTextColor(ContextCompat.getColor(this, R.color.white))
+        button.iconTint = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.white))
+        button.strokeWidth = 0
+        button.alpha = 1f
+    }
+
+    // Applies outlined secondary button style (white background, grey border, grey text).
+    private fun applySecondaryButtonStyle(button: MaterialButton) {
+        button.backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.button_secondary_bg)
+        )
+        button.setTextColor(ContextCompat.getColor(this, R.color.button_secondary_text))
+        button.iconTint = ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.button_secondary_text)
+        )
+        button.strokeColor = ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.button_secondary_border)
+        )
+        button.strokeWidth = resources.getDimensionPixelSize(R.dimen.button_stroke_width)
+        button.alpha = 1f
+    }
+
     // Renders kitchen dashboard state, button availability, and prep summary.
     private fun renderKitchenView() {
         binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.kitchen_header_bg))
@@ -690,15 +725,15 @@ class MainActivity : ComponentActivity() {
         val hasPrepData = outstandingMeals.isNotEmpty()
 
         // Update service status messaging and prep card title.
-        binding.serviceStatusText.text = if (serviceStarted && servicePausedByKitchen) {
-            getString(R.string.service_status_paused)
-        } else if (serviceStarted) {
-            getString(R.string.service_status_started)
-        } else if (!hasPrepData) {
-            getString(R.string.service_status_ready_to_load)
-        } else {
-            getString(R.string.service_status_ready_to_start)
+        // Only show status text while service is active or when data hasn't been loaded yet.
+        val statusText = when {
+            serviceStarted && servicePausedByKitchen -> getString(R.string.service_status_paused)
+            serviceStarted -> getString(R.string.service_status_started)
+            !hasPrepData -> getString(R.string.service_status_ready_to_load)
+            else -> "" // suppress the "press Start Service" prompt — UI makes it self-evident
         }
+        binding.serviceStatusText.text = statusText
+        binding.serviceStatusText.visibility = if (statusText.isBlank()) View.GONE else View.VISIBLE
         binding.prepListTitle.text = if (serviceStarted) {
             getString(R.string.meals_to_be_served)
         } else {
@@ -720,36 +755,29 @@ class MainActivity : ComponentActivity() {
         binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
         binding.pauseServiceButton.visibility = if (serviceStarted) View.VISIBLE else View.GONE
 
-        // Configure Start Service button enablement and tint.
+        // Configure Start Service button enablement and style.
         binding.startServiceButton.isEnabled = !serviceStarted && hasPrepData
-        binding.startServiceButton.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(
-                this,
-                if (binding.startServiceButton.isEnabled) R.color.kitchen_success else R.color.meal_count_text
-            )
-        )
-        binding.startServiceButton.alpha = if (binding.startServiceButton.isEnabled) 1f else 0.7f
+        if (binding.startServiceButton.isEnabled) {
+            applyPrimaryButtonStyle(binding.startServiceButton)
+        } else {
+            applySecondaryButtonStyle(binding.startServiceButton)
+        }
 
-        // Configure Pause Service button label/tint while service is active.
+        // Configure Pause Service button label (always secondary/outlined style).
         binding.pauseServiceButton.text = if (servicePausedByKitchen) {
             getString(R.string.resume_service_button_with_icon)
         } else {
             getString(R.string.pause_service_button_with_icon)
         }
-        binding.pauseServiceButton.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, R.color.kitchen_accent)
-        )
 
-        // Configure Load Meals button enablement and tint.
+        // Configure Load Meals button enablement and style.
         val canLoadMeals = !serviceStarted && !isLoadingMeals
         binding.loadTodaysMealsButton.isEnabled = canLoadMeals
-        binding.loadTodaysMealsButton.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(
-                this,
-                if (!hasPrepData && canLoadMeals) R.color.kitchen_success else R.color.kitchen_accent
-            )
-        )
-        binding.loadTodaysMealsButton.alpha = if (canLoadMeals) 1f else 0.8f
+        if (!hasPrepData && canLoadMeals) {
+            applyPrimaryButtonStyle(binding.loadTodaysMealsButton)
+        } else {
+            applySecondaryButtonStyle(binding.loadTodaysMealsButton)
+        }
         binding.loadTodaysMealsButton.text = getString(R.string.load_todays_meals)
 
         // Show inline prep loading indicator and status bar while sync is active.

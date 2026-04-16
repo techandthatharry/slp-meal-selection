@@ -19,8 +19,8 @@
 
         <ImageView
             android:id="@+id/splashLogo"
-            android:layout_width="220dp"
-            android:layout_height="220dp"
+            android:layout_width="440dp"
+            android:layout_height="440dp"
             android:contentDescription="@string/slp_logo" />
 
         <TextView
@@ -229,10 +229,11 @@
                         android:backgroundTint="@color/kitchen_success"
                         android:fontFamily="@font/gotham"
                         android:text="@string/continue_label"
-                        android:textAllCaps="false"
+                        android:textAllCaps="true"
                         android:textColor="@color/white"
                         android:textSize="24sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        app:cornerRadius="6dp" />
 
                     <TextView
                         android:id="@+id/setupErrorText"
@@ -270,7 +271,7 @@
         <LinearLayout
             android:id="@+id/headerBar"
             android:layout_width="match_parent"
-            android:layout_height="92dp"
+            android:layout_height="144dp"
             android:background="@color/kitchen_header_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -278,8 +279,8 @@
 
             <ImageView
                 android:id="@+id/headerLogo"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="128dp"
+                android:layout_height="128dp"
                 android:contentDescription="@string/slp_logo" />
 
             <LinearLayout
@@ -320,63 +321,65 @@
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="148dp"
                     android:layout_height="40dp"
+                    android:backgroundTint="@color/button_secondary_bg"
                     android:fontFamily="@font/gotham"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="40dp"
                     android:text="@string/back_to_setup"
-                    android:textAllCaps="false"
-                    android:textColor="@color/meal_name_text"
+                    android:textAllCaps="true"
+                    android:textColor="@color/button_secondary_text"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    app:cornerRadius="0dp"
-                    app:strokeColor="#BDBDBD" />
+                    app:cornerRadius="6dp"
+                    app:strokeColor="@color/button_secondary_border"
+                    app:strokeWidth="1dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/changeSchoolButton"
                     android:layout_width="148dp"
                     android:layout_height="40dp"
                     android:layout_marginStart="8dp"
+                    android:backgroundTint="@color/button_secondary_bg"
                     android:fontFamily="@font/gotham"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="40dp"
                     android:minWidth="0dp"
                     android:paddingHorizontal="12dp"
-                    android:backgroundTint="#FFFFFF"
                     android:text="@string/change_school_with_icon"
-                    android:textAllCaps="false"
-                    android:textColor="@color/meal_name_text"
+                    android:textAllCaps="true"
+                    android:textColor="@color/button_secondary_text"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    app:cornerRadius="0dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#BDBDBD" />
+                    app:cornerRadius="6dp"
+                    app:strokeColor="@color/button_secondary_border"
+                    app:strokeWidth="1dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/endServiceButton"
                     android:layout_width="148dp"
                     android:layout_height="40dp"
                     android:layout_marginStart="8dp"
+                    android:backgroundTint="#FFFFFF"
                     android:fontFamily="@font/gotham"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="40dp"
                     android:minWidth="0dp"
                     android:paddingHorizontal="12dp"
-                    android:backgroundTint="#FFFFFF"
                     android:text="@string/end_service_with_icon"
-                    android:textAllCaps="false"
+                    android:textAllCaps="true"
                     android:textColor="#B71C1C"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    app:cornerRadius="0dp"
+                    app:cornerRadius="6dp"
                     app:icon="@android:drawable/presence_busy"
                     app:iconGravity="textStart"
                     app:iconPadding="6dp"
                     app:iconTint="#D32F2F"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#E0B4B4" />
+                    app:strokeColor="#E0B4B4"
+                    app:strokeWidth="1dp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -501,16 +504,18 @@
                         android:layout_width="match_parent"
                         android:layout_height="72dp"
                         android:layout_marginTop="10dp"
-                        android:backgroundTint="@color/kitchen_accent"
+                        android:backgroundTint="@color/button_secondary_bg"
                         android:fontFamily="@font/gotham"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:text="@string/pause_service_button_with_icon"
-                        android:textAllCaps="false"
-                        android:textColor="@color/white"
+                        android:textAllCaps="true"
+                        android:textColor="@color/button_secondary_text"
                         android:textSize="20sp"
                         android:textStyle="bold"
-                        app:cornerRadius="0dp"
+                        app:cornerRadius="6dp"
+                        app:strokeColor="@color/button_secondary_border"
+                        app:strokeWidth="1dp"
                         android:visibility="gone" />
 
                     <TextView
@@ -538,18 +543,18 @@
                             android:id="@+id/loadTodaysMealsButton"
                             android:layout_width="160dp"
                             android:layout_height="160dp"
-                            android:backgroundTint="@color/kitchen_accent"
+                            android:backgroundTint="@color/kitchen_success"
                             android:fontFamily="@font/gotham"
                             android:gravity="center"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:paddingHorizontal="8dp"
                             android:text="@string/load_todays_meals"
-                            android:textAllCaps="false"
+                            android:textAllCaps="true"
                             android:textColor="@color/white"
                             android:textSize="14sp"
                             android:textStyle="bold"
-                            app:cornerRadius="0dp"
+                            app:cornerRadius="6dp"
                             app:icon="@android:drawable/stat_sys_upload"
                             app:iconGravity="textTop"
                             app:iconPadding="6dp"
@@ -560,18 +565,18 @@
                             android:id="@+id/startServiceButton"
                             android:layout_width="160dp"
                             android:layout_height="160dp"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginStart="36dp"
                             android:backgroundTint="@color/kitchen_success"
                             android:fontFamily="@font/gotham"
                             android:gravity="center"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:text="@string/start_service_button_with_icon"
-                            android:textAllCaps="false"
+                            android:textAllCaps="true"
                             android:textColor="@color/white"
                             android:textSize="20sp"
                             android:textStyle="bold"
-                            app:cornerRadius="0dp" />
+                            app:cornerRadius="6dp" />
 
                     </LinearLayout>
 
@@ -642,8 +647,13 @@
                             android:layout_width="match_parent"
                             android:layout_height="96dp"
                             android:layout_marginTop="20dp"
+                            android:backgroundTint="@color/kitchen_success"
                             android:fontFamily="@font/gotham"
-                            app:cornerRadius="0dp"
+                            android:textAllCaps="true"
+                            android:textColor="@color/white"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="6dp"
                             android:text="@string/meal_served" />
                     </LinearLayout>
                 </LinearLayout>
@@ -670,10 +680,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="96dp"
                         android:layout_marginTop="12dp"
+                        android:backgroundTint="@color/kitchen_success"
                         android:fontFamily="@font/gotham"
                         android:text="@string/start_meal_time"
-                        app:cornerRadius="0dp"
-                        android:textStyle="bold" />
+                        android:textAllCaps="true"
+                        android:textColor="@color/white"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="6dp" />
 
                     <FrameLayout
                         android:id="@+id/childStepContainer"
@@ -711,10 +725,15 @@
                                 android:id="@+id/backToClassesButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:backgroundTint="@color/button_secondary_bg"
                                 android:fontFamily="@font/gotham"
                                 android:text="@string/back_to_classes"
-                                app:cornerRadius="0dp"
-                                android:textStyle="bold" />
+                                android:textAllCaps="true"
+                                android:textColor="@color/button_secondary_text"
+                                android:textStyle="bold"
+                                app:cornerRadius="6dp"
+                                app:strokeColor="@color/button_secondary_border"
+                                app:strokeWidth="1dp" />
 
                             <ScrollView
                                 android:id="@+id/nameListScroll"
@@ -755,7 +774,7 @@
                                 android:textColor="@color/white"
                                 android:textSize="40sp"
                                 android:textStyle="bold"
-                                app:cornerRadius="0dp" />
+                                app:cornerRadius="6dp" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/oopsButton"
@@ -766,11 +785,11 @@
                                 android:backgroundTint="#D32F2F"
                                 android:fontFamily="@font/gotham"
                                 android:text="@string/oops"
-                                android:textAllCaps="false"
+                                android:textAllCaps="true"
                                 android:textColor="@color/white"
                                 android:textSize="22sp"
                                 android:textStyle="bold"
-                                app:cornerRadius="0dp" />
+                                app:cornerRadius="6dp" />
                         </LinearLayout>
 
                         <LinearLayout
@@ -798,7 +817,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="72dp"
             android:background="#323232"
             android:gravity="center_vertical|end"
             android:paddingHorizontal="16dp">
@@ -814,9 +833,10 @@
 
             <ImageView
                 android:id="@+id/footerLogo"
-                android:layout_width="120dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="220dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="10dp"
+                android:scaleType="fitCenter"
                 android:contentDescription="@string/tech_and_that_logo" />
         </LinearLayout>
     </LinearLayout>

@@ -1,7 +1,9 @@
 package com.techandthat.slpmealselection.ui
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.widget.LinearLayout
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import com.google.android.material.button.MaterialButton
 import com.techandthat.slpmealselection.R
@@ -48,6 +50,10 @@ fun renderClassSelectionStep(
     val classButtonHeight = containerHeight / 4
 
     val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
+    val density = context.resources.displayMetrics.density
+    val cornerRadiusPx = (6 * density).toInt()
+    val primaryColor = ContextCompat.getColor(context, R.color.kitchen_success)
+    val primaryTextColor = ContextCompat.getColor(context, R.color.white)
 
     // Create one full-width button per class.
     classes.forEach { className ->
@@ -56,8 +62,10 @@ fun renderClassSelectionStep(
             textSize = 34f
             isAllCaps = false
             typeface = gothamTypeface
+            backgroundTintList = ColorStateList.valueOf(primaryColor)
+            setTextColor(primaryTextColor)
             setPadding(24, 24, 24, 24)
-            cornerRadius = 0
+            cornerRadius = cornerRadiusPx
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 classButtonHeight
@@ -109,6 +117,10 @@ fun renderNameSelectionStep(
     val childButtonHeight = (containerHeight / 6).coerceAtMost(180)
 
     val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
+    val density = context.resources.displayMetrics.density
+    val cornerRadiusPx = (6 * density).toInt()
+    val primaryColor = ContextCompat.getColor(context, R.color.kitchen_success)
+    val primaryTextColor = ContextCompat.getColor(context, R.color.white)
 
     // Create one full-width button per child.
     children.forEach { child ->
@@ -117,8 +129,10 @@ fun renderNameSelectionStep(
             textSize = 34f
             isAllCaps = false
             typeface = gothamTypeface
+            backgroundTintList = ColorStateList.valueOf(primaryColor)
+            setTextColor(primaryTextColor)
             setPadding(24, 24, 24, 24)
-            cornerRadius = 0
+            cornerRadius = cornerRadiusPx
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 childButtonHeight

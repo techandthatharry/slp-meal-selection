@@ -553,11 +553,15 @@ exports.getArborStudents = onCall(
             .map((student, index) => mapArborStudent(student, index))
             .filter((student) => student !== null);
 
-        // Build final Firestore document payloads with deterministic IDs.
+        // Build Firestore payloads with school-scoped deterministic IDs.
+        const slugSchool = toSlug(schoolName);
         const studentRecords = students.map((student, index) => {
           const slugClass = toSlug(student.className);
           const slugName = toSlug(student.childName);
-          const docId = `${slugClass}_${slugName}` || `student_${index}`;
+          // School prefix prevents cross-school document collisions.
+          const docId =
+            `${slugSchool}_${slugClass}_${slugName}` ||
+            `student_${index}`;
           return {
             documentId: docId,
             childName: student.childName,

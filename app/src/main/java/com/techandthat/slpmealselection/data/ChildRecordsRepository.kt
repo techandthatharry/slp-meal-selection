@@ -21,12 +21,15 @@ class ChildRecordsRepository(
         val served: Boolean
     )
 
-    // Reads childRecords from Firestore and maps them into ChildRecord models.
+    // Reads childRecords from Firestore filtered to the given school.
     fun loadRecords(
+        schoolName: String,
         onSuccess: (List<ChildRecord>) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        childRecordsCollection.get()
+        childRecordsCollection
+            .whereEqualTo("schoolName", schoolName)
+            .get()
             .addOnSuccessListener { snapshot ->
                 // Convert Firestore docs to domain rows and skip malformed entries.
                 val records = snapshot.documents.mapNotNull { doc ->
@@ -72,12 +75,15 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
-    // Deletes every document in childRecords collection.
+    // Deletes all childRecords belonging to the given school only.
     fun deleteAllRecords(
+        schoolName: String,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        childRecordsCollection.get()
+        childRecordsCollection
+            .whereEqualTo("schoolName", schoolName)
+            .get()
             .addOnSuccessListener { snapshot ->
                 val batch = firestore.batch()
 
