@@ -487,11 +487,12 @@
                                     android:id="@+id/prepLoadingProgress"
                                     style="?android:attr/progressBarStyleHorizontal"
                                     android:layout_width="match_parent"
-                                    android:layout_height="10dp"
-                                    android:layout_marginTop="8dp"
+                                    android:layout_height="16dp"
+                                    android:layout_marginTop="10dp"
                                     android:indeterminate="true"
-                                    android:indeterminateTint="@color/kitchen_warning"
-                                    android:progressBackgroundTint="@color/kitchen_bg"
+                                    android:indeterminateTint="@color/kitchen_success"
+                                    android:progressTint="@color/kitchen_success"
+                                    android:progressBackgroundTint="@color/button_secondary_border"
                                     android:visibility="gone" />
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>

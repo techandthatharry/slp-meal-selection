@@ -67,6 +67,9 @@ class MainActivity : ComponentActivity() {
     private var firebaseStatusMessage: String? = null
     private var isLoadingMeals = false
     private var servicePausedByKitchen = false
+    // Tracks Arbor student sync progress; 0 means total is not yet known (indeterminate).
+    private var syncProgressCurrent: Int = 0
+    private var syncProgressTotal: Int = 0
 
     // Inflates views, initializes setup UI, and wires primary event listeners.
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -240,7 +243,8 @@ class MainActivity : ComponentActivity() {
     private fun fetchStudentsFromArbor() {
         isLoadingMeals = true
         firebaseStatusMessage = null
-        binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
+        syncProgressCurrent = 0
+        syncProgressTotal = 0
         renderKitchenView()
         ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
     }
@@ -313,13 +317,17 @@ class MainActivity : ComponentActivity() {
                         val newTotalWritten = totalWritten + mapped.size
                         val progressTotal = if (totalAvailable > 0) totalAvailable else newTotalWritten
 
+                        // Update progress state so renderKitchenView can drive the bar.
+                        syncProgressCurrent = newTotalWritten
+                        syncProgressTotal = progressTotal
+
                         if (hasMore) {
                             // Always continue to next batch — server now returns the
                             // exact resume offset even when rate-limited mid-batch.
                             val statusText = if (rateLimited) {
                                 "Arbor rate limited. Retrying from $nextOffset/$progressTotal..."
                             } else {
-                                "Syncing Arbor students... $newTotalWritten/$progressTotal"
+                                null
                             }
                             firebaseStatusMessage = statusText
                             renderKitchenView()
@@ -780,9 +788,36 @@ class MainActivity : ComponentActivity() {
         }
         binding.loadTodaysMealsButton.text = getString(R.string.load_todays_meals)
 
-        // Show inline prep loading indicator and status bar while sync is active.
-        binding.prepLoadingText.visibility = if (isLoadingMeals) View.VISIBLE else View.GONE
-        binding.prepLoadingProgress.visibility = if (isLoadingMeals) View.VISIBLE else View.GONE
+        // Show inline prep loading indicator and progress bar while sync is active.
+        if (isLoadingMeals) {
+            binding.prepLoadingText.visibility = View.VISIBLE
+            binding.prepLoadingProgress.visibility = View.VISIBLE
+
+            if (syncProgressTotal > 0) {
+                // Switch to determinate once we know the total student count.
+                val pct = (syncProgressCurrent * 100) / syncProgressTotal
+                binding.prepLoadingText.text = getString(
+                    R.string.sync_progress_label,
+                    syncProgressCurrent,
+                    syncProgressTotal,
+                    pct
+                )
+                binding.prepLoadingProgress.isIndeterminate = false
+                binding.prepLoadingProgress.max = syncProgressTotal
+                binding.prepLoadingProgress.progress = syncProgressCurrent
+            } else {
+                // Total not yet known — stay indeterminate for the first batch.
+                binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
+                binding.prepLoadingProgress.isIndeterminate = true
+            }
+        } else {
+            binding.prepLoadingText.visibility = View.GONE
+            binding.prepLoadingProgress.visibility = View.GONE
+            // Reset to indeterminate so the bar is ready for the next sync.
+            binding.prepLoadingProgress.isIndeterminate = true
+            syncProgressCurrent = 0
+            syncProgressTotal = 0
+        }
 
         // Keep school/end controls visible and set enabled state.
         binding.changeSchoolButton.visibility = View.VISIBLE

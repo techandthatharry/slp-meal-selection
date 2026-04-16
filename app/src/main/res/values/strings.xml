@@ -62,6 +62,7 @@
     <string name="meals_to_prepare_with_icon">Meals to prepare</string>
     <string name="meal_count_format">%1$d x</string>
     <string name="loading_todays_meals">Loading today’s meals…</string>
+    <string name="sync_progress_label">Syncing students: %1$d / %2$d (%3$d%%)</string>
     <string name="no_meals_loaded">No meals have been loaded, click the button.</string>
     <string name="reload_meals_title">Reload today’s meals?</string>
     <string name="reload_meals_message">Are you sure you want to reload today’s meals?</string>
