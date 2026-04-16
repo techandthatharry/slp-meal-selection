@@ -11,6 +11,7 @@ class ArborSyncService(
     fun syncStudents(
         schoolName: String,
         maxRecords: Int,
+        offset: Int,
         onSuccess: (Map<String, Any>?) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
@@ -19,9 +20,26 @@ class ArborSyncService(
             .call(
                 mapOf(
                     "schoolName" to schoolName,
-                    "maxRecords" to maxRecords
+                    "maxRecords" to maxRecords,
+                    "offset" to offset
                 )
             )
+            .addOnSuccessListener { result: HttpsCallableResult ->
+                @Suppress("UNCHECKED_CAST")
+                onSuccess(result.data as? Map<String, Any>)
+            }
+            .addOnFailureListener(onFailure)
+    }
+
+    // Calls uploadArborBillingQueue and returns upload/delete outcome details.
+    fun uploadBillingQueue(
+        schoolName: String,
+        onSuccess: (Map<String, Any>?) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        functions
+            .getHttpsCallable("uploadArborBillingQueue")
+            .call(mapOf("schoolName" to schoolName))
             .addOnSuccessListener { result: HttpsCallableResult ->
                 @Suppress("UNCHECKED_CAST")
                 onSuccess(result.data as? Map<String, Any>)

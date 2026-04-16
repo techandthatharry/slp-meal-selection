@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
         "St Mary's Primary",
         "St Peter's Primary"
     )
+    private val arborSyncBatchSize = 300
 
     private val initialDummyData = listOf(
         MealEntry("Liam Smith", "Reception", "Tomato Pasta"),
@@ -246,7 +247,12 @@ class MainActivity : ComponentActivity() {
     private fun ensureAuthenticatedThenSync(retryOnUnauthenticated: Boolean) {
         authManager.ensureFreshAuth(
             onReady = {
-                runArborSyncCallable(retryOnUnauthenticated)
+                runArborSyncCallable(
+                    retryOnUnauthenticated = retryOnUnauthenticated,
+                    offset = 0,
+                    totalWritten = 0,
+                    knownTotal = null
+                )
             },
             onFailure = { error ->
                 val failureMessage = getString(
@@ -259,63 +265,95 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    // Calls getArborStudents and persists returned records into Firestore.
-    private fun runArborSyncCallable(retryOnUnauthenticated: Boolean) {
+    // Calls getArborStudents in pages and persists each batch into Firestore.
+    private fun runArborSyncCallable(
+        retryOnUnauthenticated: Boolean,
+        offset: Int,
+        totalWritten: Int,
+        knownTotal: Int?
+    ) {
         arborSyncService.syncStudents(
             schoolName = selectedSchool,
-            maxRecords = 10,
+            maxRecords = arborSyncBatchSize,
+            offset = offset,
             onSuccess = { data ->
                 Log.d("ArborIntegration", "Success: $data")
 
-                // Convert payload into validated records for repository upsert.
+                val rateLimited = data?.get("rateLimited") as? Boolean ?: false
+                val hasMore = data?.get("hasMore") as? Boolean ?: false
+                val nextOffset = (data?.get("nextOffset") as? Number)?.toInt() ?: offset
+                val totalAvailable = (data?.get("totalAvailable") as? Number)?.toInt()
+                    ?: knownTotal
+                    ?: 0
                 val mapped = ArborPayloadMapper.mapStudentRecords(data)
-                if (mapped.isNotEmpty()) {
-                    repository.upsertArborRecords(
-                        records = mapped,
-                        onSuccess = {
-                            // Refresh local UI data after successful write.
-                            loadChildRecordsFromFirestore()
-                            isLoadingMeals = false
-                            val rateLimited = data?.get("rateLimited") as? Boolean ?: false
-                            val message = data?.get("message") as? String
-                            val toastText = if (rateLimited) {
-                                message ?: "Arbor rate limited. Please retry in a minute."
-                            } else {
-                                message ?: "Arbor students synced to Firebase"
-                            }
-                            firebaseStatusMessage = null
-                            renderKitchenView()
-                            Toast.makeText(this, toastText, Toast.LENGTH_SHORT).show()
-                        },
-                        onFailure = { error ->
-                            // Surface local write failures and still refresh UI state.
-                            Log.e("ArborIntegration", "Client-side Firestore upsert failed", error)
-                            isLoadingMeals = false
-                            firebaseStatusMessage = "Failed to save meals locally"
-                            loadChildRecordsFromFirestore()
-                            renderKitchenView()
-                        }
-                    )
-                } else {
-                    // Handle empty payloads and optional rate-limit response messaging.
+
+                if (mapped.isEmpty()) {
                     isLoadingMeals = false
-                    val rateLimited = data?.get("rateLimited") as? Boolean ?: false
-                    val message = data?.get("message") as? String
                     firebaseStatusMessage = if (rateLimited) {
-                        message ?: "Arbor rate limited. Please retry in a minute."
+                        "Arbor rate limited while syncing. Synced $totalWritten/$totalAvailable so far."
                     } else {
                         null
                     }
                     loadChildRecordsFromFirestore()
                     renderKitchenView()
-                    Toast.makeText(this, message ?: "No meals returned", Toast.LENGTH_SHORT).show()
+                    val finalMessage = if (rateLimited) {
+                        "Arbor rate limited. Synced $totalWritten of $totalAvailable."
+                    } else {
+                        "No more Arbor students returned."
+                    }
+                    Toast.makeText(this, finalMessage, Toast.LENGTH_LONG).show()
+                    return@syncStudents
                 }
+
+                repository.upsertArborRecords(
+                    records = mapped,
+                    onSuccess = {
+                        val newTotalWritten = totalWritten + mapped.size
+                        val progressTotal = if (totalAvailable > 0) totalAvailable else newTotalWritten
+
+                        if (hasMore) {
+                            // Always continue to next batch — server now returns the
+                            // exact resume offset even when rate-limited mid-batch.
+                            val statusText = if (rateLimited) {
+                                "Arbor rate limited. Retrying from $nextOffset/$progressTotal..."
+                            } else {
+                                "Syncing Arbor students... $newTotalWritten/$progressTotal"
+                            }
+                            firebaseStatusMessage = statusText
+                            renderKitchenView()
+                            runArborSyncCallable(
+                                retryOnUnauthenticated = retryOnUnauthenticated,
+                                offset = nextOffset,
+                                totalWritten = newTotalWritten,
+                                knownTotal = totalAvailable
+                            )
+                            return@upsertArborRecords
+                        }
+
+                        loadChildRecordsFromFirestore()
+                        isLoadingMeals = false
+                        firebaseStatusMessage = null
+                        renderKitchenView()
+                        Toast.makeText(
+                            this,
+                            "Arbor sync complete: $newTotalWritten/$progressTotal students synced",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    },
+                    onFailure = { error ->
+                        Log.e("ArborIntegration", "Client-side Firestore upsert failed", error)
+                        isLoadingMeals = false
+                        firebaseStatusMessage = "Failed to save meals locally"
+                        loadChildRecordsFromFirestore()
+                        renderKitchenView()
+                    }
+                )
             },
             onFailure = { exception ->
                 val functionsException = exception as? FirebaseFunctionsException
-                val isUnauthenticated = functionsException?.code == FirebaseFunctionsException.Code.UNAUTHENTICATED
+                val isUnauthenticated =
+                    functionsException?.code == FirebaseFunctionsException.Code.UNAUTHENTICATED
 
-                // Retry once with forced re-auth when callable returns UNAUTHENTICATED.
                 if (retryOnUnauthenticated && isUnauthenticated) {
                     Log.w("ArborIntegration", "Callable returned UNAUTHENTICATED, retrying with fresh auth")
                     authManager.signOut()
@@ -323,7 +361,6 @@ class MainActivity : ComponentActivity() {
                     return@syncStudents
                 }
 
-                // Surface final sync failure to kitchen status area and toast.
                 isLoadingMeals = false
                 firebaseStatusMessage = "Failed to sync meals"
                 renderKitchenView()
@@ -418,25 +455,132 @@ class MainActivity : ComponentActivity() {
             .show()
     }
 
-    // Resets session state and clears Firestore child records at end of service.
+    // Uploads Arbor billing queue, then clears child records and resets local session state.
     private fun endServiceAndDeleteRecords() {
-        repository.deleteAllRecords(
-            onSuccess = {
-                simulatedDatabase.clear()
-                activeOrder = null
-                selectedClass = null
-                showWaitingOverlayAfterConfirm = false
-                serviceStarted = false
-                servicePausedByKitchen = false
-                mealTimeStarted = false
-                childScreen = ChildScreen.IDLE
-                renderAppContent()
-                Toast.makeText(this, getString(R.string.service_reset_done), Toast.LENGTH_SHORT).show()
+        isLoadingMeals = true
+        firebaseStatusMessage = "Uploading billing queue to Arbor sandbox..."
+        renderKitchenView()
+        ensureAuthenticatedThenUploadBillingQueue(retryOnUnauthenticated = true)
+    }
+
+    // Verifies auth token exists before invoking billing queue upload callable.
+    private fun ensureAuthenticatedThenUploadBillingQueue(retryOnUnauthenticated: Boolean) {
+        authManager.ensureFreshAuth(
+            onReady = {
+                runBillingUploadCallable(retryOnUnauthenticated)
             },
             onFailure = { error ->
-                val failureMessage = getString(R.string.firebase_delete_failed_with_reason, error.message ?: "unknown")
+                isLoadingMeals = false
+                val failureMessage = getString(
+                    R.string.firebase_auth_failed_with_reason,
+                    error.message ?: "unknown"
+                )
                 firebaseStatusMessage = failureMessage
+                Log.e("ArborBillingUpload", "Auth failed before billing upload", error)
                 Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                renderKitchenView()
+            }
+        )
+    }
+
+    // Calls uploadArborBillingQueue and then ends service only when upload succeeds.
+    private fun runBillingUploadCallable(retryOnUnauthenticated: Boolean) {
+        arborSyncService.uploadBillingQueue(
+            schoolName = selectedSchool,
+            onSuccess = { data ->
+                val success = data?.get("success") as? Boolean ?: false
+                val uploaded = (data?.get("uploaded") as? Number)?.toInt() ?: 0
+                val deleted = (data?.get("deleted") as? Number)?.toInt() ?: 0
+                val failed = (data?.get("failed") as? Number)?.toInt() ?: 0
+                val message = data?.get("message") as? String
+                val backendError = data?.get("errorMessage") as? String
+                val firstFailureReason = data?.get("firstFailureReason")?.toString()
+                val firstFailureStatusCode = (data?.get("firstFailureStatusCode") as? Number)?.toInt()
+
+                Log.i(
+                    "ArborBillingUpload",
+                    "Upload result success=$success uploaded=$uploaded deleted=$deleted failed=$failed message=$message"
+                )
+
+                if (!success) {
+                    isLoadingMeals = false
+                    val arborFailureText = firstFailureReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                        val codeSuffix = firstFailureStatusCode?.let { " (HTTP $it)" }.orEmpty()
+                        "Arbor rejected billing payload: $reason$codeSuffix"
+                    }
+                    val detailText = arborFailureText
+                        ?: backendError?.takeIf { it.isNotBlank() }
+                        ?: message
+                        ?: "Failed to upload all billing rows to Arbor sandbox"
+                    firebaseStatusMessage =
+                        "Arbor upload incomplete. Uploaded $uploaded, failed $failed. $detailText"
+                    renderKitchenView()
+                    Toast.makeText(this, detailText, Toast.LENGTH_LONG).show()
+                    return@uploadBillingQueue
+                }
+
+                firebaseStatusMessage = "Arbor billing uploaded ($uploaded) and queue cleaned ($deleted). Ending service..."
+                renderKitchenView()
+
+                repository.deleteAllRecords(
+                    onSuccess = {
+                        simulatedDatabase.clear()
+                        activeOrder = null
+                        selectedClass = null
+                        showWaitingOverlayAfterConfirm = false
+                        serviceStarted = false
+                        servicePausedByKitchen = false
+                        mealTimeStarted = false
+                        childScreen = ChildScreen.IDLE
+                        isLoadingMeals = false
+                        firebaseStatusMessage = null
+                        renderAppContent()
+                        Toast.makeText(
+                            this,
+                            "Service ended. Arbor upload: $uploaded, queue deleted: $deleted",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    onFailure = { error ->
+                        isLoadingMeals = false
+                        val failureMessage = getString(
+                            R.string.firebase_delete_failed_with_reason,
+                            error.message ?: "unknown"
+                        )
+                        firebaseStatusMessage =
+                            "Arbor upload succeeded but childRecords delete failed: $failureMessage"
+                        Toast.makeText(this, failureMessage, Toast.LENGTH_LONG).show()
+                        renderKitchenView()
+                    }
+                )
+            },
+            onFailure = { error ->
+                val functionsException = error as? FirebaseFunctionsException
+                val isUnauthenticated =
+                    functionsException?.code == FirebaseFunctionsException.Code.UNAUTHENTICATED
+
+                if (retryOnUnauthenticated && isUnauthenticated) {
+                    Log.w(
+                        "ArborBillingUpload",
+                        "Billing upload callable returned UNAUTHENTICATED, retrying with fresh auth"
+                    )
+                    authManager.signOut()
+                    ensureAuthenticatedThenUploadBillingQueue(retryOnUnauthenticated = false)
+                    return@uploadBillingQueue
+                }
+
+                isLoadingMeals = false
+                val codeText = functionsException?.code?.name ?: "UNKNOWN"
+                firebaseStatusMessage = "Failed to upload billing queue to Arbor sandbox ($codeText)"
+                Log.e("ArborBillingUpload", "Callable failed code=$codeText", error)
+                Toast.makeText(
+                    this,
+                    functionsException?.details?.toString()
+                        ?: functionsException?.message
+                        ?: error.message
+                        ?: "Failed to upload billing queue",
+                    Toast.LENGTH_LONG
+                ).show()
                 renderKitchenView()
             }
         )
