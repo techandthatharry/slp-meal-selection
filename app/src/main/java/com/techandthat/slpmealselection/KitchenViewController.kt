@@ -103,31 +103,15 @@ internal fun MainActivity.renderKitchenView() {
     }
     binding.loadTodaysMealsButton.text = getString(R.string.load_todays_meals)
 
-    // Show inline loading indicator and determinate progress bar while sync is active.
+    // Show brief loading indicator while checking Firebase cache.
     if (isLoadingMeals) {
         binding.prepLoadingText.visibility = View.VISIBLE
+        binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
         binding.prepLoadingProgress.visibility = View.VISIBLE
-
-        if (syncProgressTotal > 0) {
-            val pct = (syncProgressCurrent * 100) / syncProgressTotal
-            binding.prepLoadingText.text = getString(
-                R.string.sync_progress_label,
-                syncProgressCurrent,
-                syncProgressTotal,
-                pct
-            )
-            // Bar uses 0-100 percentage scale for reliable determinate rendering.
-            binding.prepLoadingProgress.progress = pct
-        } else {
-            // Total not yet known — show 0% bar and generic label.
-            binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
-            binding.prepLoadingProgress.progress = 0
-        }
+        binding.prepLoadingProgress.progress = 0
     } else {
         binding.prepLoadingText.visibility = View.GONE
         binding.prepLoadingProgress.visibility = View.GONE
-        syncProgressCurrent = 0
-        syncProgressTotal = 0
     }
 
     binding.changeSchoolButton.visibility = View.VISIBLE

@@ -30,10 +30,6 @@ class MainActivity : ComponentActivity() {
         "St Mary's Primary",
         "St Peter's Primary"
     )
-    // 50 students × 750ms/request ≈ 37.5s per batch — comfortably within the 90s callable timeout.
-    // 100 students × 200ms/request ≈ 20s per batch — within 90s callable timeout.
-    internal val arborSyncBatchSize = 100
-
     internal val initialDummyData = listOf(
         MealEntry("Liam Smith", "Reception", "Tomato Pasta"),
         MealEntry("Emma Jones", "Reception", "Fish & Chips"),
@@ -57,9 +53,6 @@ class MainActivity : ComponentActivity() {
     internal var firebaseStatusMessage: String? = null
     internal var isLoadingMeals = false
     internal var servicePausedByKitchen = false
-    // Tracks Arbor student sync progress; 0 means total is not yet known (indeterminate).
-    internal var syncProgressCurrent: Int = 0
-    internal var syncProgressTotal: Int = 0
 
     // Inflates views, initializes setup UI, and wires primary event listeners.
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +65,7 @@ class MainActivity : ComponentActivity() {
         setupSchoolSpinner(this, binding, schools)
         setupKeyboardSafeLoginScroll(binding)
         // Load SLP logo into splash and header areas (PNG with transparent background).
-        decodeAssetBitmap(assets, "SLP.png")?.let {
+        decodeAssetBitmap(assets, "SLP logo, no text.png")?.let {
             binding.splashLogo.setImageBitmap(it)
             binding.headerLogo.setImageBitmap(it)
         }

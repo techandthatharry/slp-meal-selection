@@ -1,6 +1,5 @@
 // Implements callable endpoints for Arbor sync and Firestore updates.
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
-const {onSchedule} = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
@@ -1145,141 +1144,6 @@ exports.uploadArborBillingQueue = onCall(
 );
 
 // ---------------------------------------------------------------------------
-// Shared helper: fetch Arbor student detail rows sequentially.
-// Used by both the on-demand callable and the scheduled sync.
-// ---------------------------------------------------------------------------
-
-/**
- * Fetches full detail for a list of Arbor student list rows.
- * Calls each href sequentially with a fixed delay; respects Retry-After.
- *
- * @param {Array<Object>} rows Arbor list rows with href fields.
- * @param {Object} authHeaders HTTP auth headers.
- * @param {number} delayMs Inter-request delay in milliseconds.
- * @param {number} maxRetries Maximum 429 retries per student.
- * @return {Promise<Array<Object>>} Resolved student detail objects.
- */
-async function fetchArborStudentDetails(
-    rows, authHeaders, delayMs, maxRetries) {
-  const detailed = [];
-  const DEFAULT_RETRY_AFTER_MS = 65000;
-
-  for (let i = 0; i < rows.length; i++) {
-    const student = rows[i];
-    if (i > 0) await sleep(delayMs);
-
-    // Row already has full person data — skip detail call.
-    if (student && student.person) {
-      detailed.push(student);
-      continue;
-    }
-
-    const href = student && student.href;
-    if (!href) continue;
-
-    let fetched = false;
-    let retries = 0;
-
-    while (!fetched && retries <= maxRetries) {
-      try {
-        const resp = await fetch(
-            `https://api-sandbox2.uk.arbor.sc${href}?format=json`,
-            {method: "GET", headers: authHeaders},
-        );
-
-        if (resp.status === 429) {
-          if (retries >= maxRetries) {
-            fetched = true;
-            break;
-          }
-          const retryHeader = resp.headers.get("Retry-After");
-          const waitMs = retryHeader ?
-            parseInt(retryHeader, 10) * 1000 :
-            DEFAULT_RETRY_AFTER_MS;
-          logger.info("Rate limited in fetchArborStudentDetails", {
-            i, waitMs, attempt: retries + 1,
-          });
-          await sleep(waitMs);
-          retries++;
-          continue;
-        }
-
-        if (!resp.ok) {
-          fetched = true;
-          continue;
-        }
-
-        const detailJson = await resp.json();
-        const detailRow = extractStudents(detailJson)[0];
-        if (detailRow) detailed.push(detailRow);
-        fetched = true;
-      } catch (detailErr) {
-        logger.warn("Exception in fetchArborStudentDetails", {
-          href,
-          error: detailErr && detailErr.message ? detailErr.message : "unknown",
-        });
-        fetched = true;
-      }
-    }
-  }
-
-  return detailed;
-}
-
-/**
- * Maps and upserts student rows to Firestore in chunks of 400.
- *
- * @param {Array<Object>} detailedStudents Detail objects from Arbor.
- * @param {string} schoolName School label to tag each record.
- * @param {string} slugSchool Slug version of school name (doc ID prefix).
- * @return {Promise<number>} Total documents written.
- */
-async function writeStudentsToFirestore(
-    detailedStudents, schoolName, slugSchool) {
-  const CHUNK_SIZE = 400;
-  let totalWritten = 0;
-
-  for (let ci = 0; ci < detailedStudents.length; ci += CHUNK_SIZE) {
-    const chunk = detailedStudents.slice(ci, ci + CHUNK_SIZE);
-    const batch = db.batch();
-    let chunkCount = 0;
-
-    chunk.forEach((student, idx) => {
-      const mapped = mapArborStudent(student, ci + idx);
-      if (!mapped) return;
-
-      const slugClass = toSlug(mapped.className);
-      const slugName = toSlug(mapped.childName);
-      const docId =
-        `${slugSchool}_${slugClass}_${slugName}` || `student_${ci + idx}`;
-
-      const recordData = {
-        childName: mapped.childName,
-        className: mapped.className,
-        schoolName,
-        source: "arbor",
-        mealSelected: mapped.mealSelected,
-        dietaryRequirements: mapped.dietaryRequirements,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-      if (mapped.arborStudentId) {
-        recordData.arborStudentId = mapped.arborStudentId;
-      }
-      batch.set(
-          db.collection("childRecords").doc(docId), recordData, {merge: true});
-      chunkCount++;
-    });
-
-    if (chunkCount > 0) {
-      await batch.commit();
-      totalWritten += chunkCount;
-    }
-  }
-
-  return totalWritten;
-}
-
-// ---------------------------------------------------------------------------
 // GraphQL helper: queries Arbor's /graphql/query endpoint.
 // The WAF requires a browser User-Agent; Basic auth is passed in the header.
 // ---------------------------------------------------------------------------
@@ -1323,14 +1187,62 @@ async function arborGraphQL(query, authHeaders) {
  * @param {string} targetDate ISO date string YYYY-MM-DD.
  * @return {Promise<number>} Count of updated childRecords.
  */
+/**
+ * Returns the name fragment for the Student inline type in GraphQL.
+ * Includes displayName (full name), studentId, and registration form (class).
+ */
+const STUDENT_GQL_FIELDS = `
+  ... on Student {
+    id
+    studentId
+    displayName
+    registrationForm { shortName }
+  }
+`;
+
+/**
+ * Extracts a clean student record from a GraphQL attendee + mealProvision.
+ *
+ * @param {{attendee: *, mealProvision: *}} row Raw GraphQL row.
+ * @return {{studentId: string, displayName: string,
+ *   className: string, mealProvisionName: string}|null} Extracted data or null.
+ */
+function extractMealChoiceRecord(row) {
+  const att = row.attendee;
+  if (!att || !att.studentId) return null;
+  const displayName =
+    String(att.displayName || att.id || att.studentId).trim();
+  const className =
+    (att.registrationForm && att.registrationForm.shortName) || "";
+  const mealProvisionName =
+    (row.mealProvision && row.mealProvision.mealProvisionName) || "School Meal";
+  return {
+    studentId: String(att.studentId),
+    displayName,
+    className,
+    mealProvisionName,
+  };
+}
+
+/**
+ * Fetches today's meal choices from Arbor via GraphQL and upserts them as
+ * full childRecords into Firestore.
+ * Tries MealRotationMenuChoice first (specific daily choices), then falls
+ * back to MealChoice (standing weekly orders).
+ *
+ * @param {string} schoolName Name tag stamped on every written record.
+ * @param {*} authHeaders Basic-auth headers for Arbor.
+ * @param {string} targetDate YYYY-MM-DD date to query.
+ * @return {Promise<number>} Number of records written.
+ */
 async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
-  // Map: arborStudentId (string) -> {mealProvisionName, className}
-  const updates = {};
+  // Map: arborStudentId -> {displayName, className, mealProvisionName}
+  const records = {};
   const PAGE_SIZE = 200;
   let pageNum = 1;
   let totalFetched = 0;
 
-  // --- Step 1: try MealRotationMenuChoice (daily specific choices) ---
+  // Step 1: try MealRotationMenuChoice (specific daily dish choices).
   let morePages = true;
   while (morePages) {
     const gqlQuery = `{
@@ -1341,13 +1253,7 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
       ) {
         id
         mealProvision { mealProvisionName isSchoolHotMeal isAbsent }
-        attendee {
-          ... on Student {
-            id
-            studentId
-            registrationForm { shortName }
-          }
-        }
+        attendee { ${STUDENT_GQL_FIELDS} }
       }
     }`;
 
@@ -1357,18 +1263,9 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
 
     totalFetched += rows.length;
     rows.forEach((row) => {
-      const att = row.attendee;
-      if (!att || !att.studentId) return;
-      const studentId = String(att.studentId);
-      if (!updates[studentId]) {
-        updates[studentId] = {
-          mealProvisionName:
-            (row.mealProvision && row.mealProvision.mealProvisionName) ||
-            "School Meal",
-          className:
-            (att.registrationForm && att.registrationForm.shortName) || null,
-        };
-      }
+      const rec = extractMealChoiceRecord(row);
+      if (!rec) return;
+      if (!records[rec.studentId]) records[rec.studentId] = rec;
     });
 
     if (rows.length < PAGE_SIZE) {
@@ -1379,14 +1276,14 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
     await sleep(200);
   }
 
-  // Step 2: if no rotation choices found, use MealChoice standing orders.
+  // Step 2: fall back to MealChoice when no daily-specific data found.
   // eslint-disable-next-line
   if (totalFetched === 0) {
-    logger.info("No MealRotationMenuChoice for date; trying MealChoice", {
+    logger.info("No MealRotationMenuChoice; falling back to MealChoice", {
       targetDate, schoolName,
     });
 
-    const dayIndex = new Date(targetDate).getDay(); // 0=Sun, 1=Mon ... 6=Sat
+    const dayIndex = new Date(targetDate).getDay(); // 0=Sun ... 6=Sat
     const dayArgs = [
       "appliesSunday: true",
       "appliesMonday: true",
@@ -1398,8 +1295,8 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
     ][dayIndex];
 
     pageNum = 1;
-    let moreStandingPages = true;
-    while (moreStandingPages) {
+    let moreStanding = true;
+    while (moreStanding) {
       const gqlQuery = `{
         MealChoice(
           ${dayArgs}
@@ -1410,13 +1307,7 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
         ) {
           id
           mealProvision { mealProvisionName isSchoolHotMeal isAbsent }
-          attendee {
-            ... on Student {
-              id
-              studentId
-              registrationForm { shortName }
-            }
-          }
+          attendee { ${STUDENT_GQL_FIELDS} }
         }
       }`;
 
@@ -1425,22 +1316,13 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
       if (rows.length === 0) break;
 
       rows.forEach((row) => {
-        const att = row.attendee;
-        if (!att || !att.studentId) return;
-        const studentId = String(att.studentId);
-        if (!updates[studentId]) {
-          updates[studentId] = {
-            mealProvisionName:
-              (row.mealProvision && row.mealProvision.mealProvisionName) ||
-              "School Meal",
-            className:
-              (att.registrationForm && att.registrationForm.shortName) || null,
-          };
-        }
+        const rec = extractMealChoiceRecord(row);
+        if (!rec) return;
+        if (!records[rec.studentId]) records[rec.studentId] = rec;
       });
 
       if (rows.length < PAGE_SIZE) {
-        moreStandingPages = false;
+        moreStanding = false;
         break;
       }
       pageNum++;
@@ -1448,213 +1330,42 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
     }
   }
 
-  const studentIds = Object.keys(updates);
+  const studentIds = Object.keys(records);
   if (studentIds.length === 0) {
     logger.info("No meal choices found for date", {targetDate, schoolName});
     return 0;
   }
 
-  // Batch-update matching childRecords by arborStudentId.
-  const IN_BATCH = 30;
-  const batch = db.batch();
-  let updated = 0;
+  // Upsert one full childRecord per student.
+  // Document ID: schoolSlug_classSlug_nameSlug (deterministic, school-scoped).
+  const slugSchool = toSlug(schoolName);
+  const writeBatch = db.batch();
+  let written = 0;
 
-  for (let si = 0; si < studentIds.length; si += IN_BATCH) {
-    const idSlice = studentIds.slice(si, si + IN_BATCH);
-    const snap = await db.collection("childRecords")
-        .where("schoolName", "==", schoolName)
-        .where("arborStudentId", "in", idSlice)
-        .get();
+  studentIds.forEach((studentId) => {
+    const rec = records[studentId];
+    const slugClass = toSlug(rec.className || "unknown");
+    const slugName = toSlug(rec.displayName || `student_${studentId}`);
+    const docId = `${slugSchool}_${slugClass}_${slugName}`;
 
-    snap.forEach((doc) => {
-      const arborId = doc.data().arborStudentId;
-      const update = arborId && updates[arborId];
-      if (!update) return;
-      const fields = {
-        mealSelected: update.mealProvisionName,
-        mealChoiceSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-      // Also update className if we received it and it isn't already set.
-      if (update.className && !doc.data().className) {
-        fields.className = update.className;
-      }
-      batch.update(doc.ref, fields);
-      updated++;
-    });
-  }
+    const docRef = db.collection("childRecords").doc(docId);
+    writeBatch.set(docRef, {
+      childName: rec.displayName,
+      className: rec.className,
+      schoolName,
+      mealSelected: rec.mealProvisionName,
+      arborStudentId: studentId,
+      served: false,
+      source: "arbor",
+      mealChoiceSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+    written++;
+  });
 
-  if (updated > 0) await batch.commit();
-  logger.info("Meal choices sync complete", {schoolName, updated, targetDate});
-  return updated;
+  await writeBatch.commit();
+  logger.info("Meal choices upserted", {schoolName, written, targetDate});
+  return written;
 }
-
-// ---------------------------------------------------------------------------
-// Scheduled nightly sync: 05:00 UK time daily.
-// Fetches ALL Arbor students; upserts into Firestore.
-// No client timeout — Cloud Functions Gen2, up to 3600 seconds.
-// ---------------------------------------------------------------------------
-exports.scheduledArborStudentSync = onSchedule(
-    {
-      schedule: "0 5 * * *",
-      timeZone: "Europe/London",
-      region: "europe-west2",
-      // 1800s (30 min max for scheduled functions) handles 2000+ students
-      // at 100ms/req including Retry-After sleeps.
-      timeoutSeconds: 1800,
-      memory: "512MiB",
-    },
-    async () => {
-      // Schools to sync — must match schoolName values stored in childRecords.
-      const schools = [
-        "St Luke's Primary",
-        "St Mary's Primary",
-        "St Peter's Primary",
-      ];
-
-      const {username, password} = getArborCredentials();
-      const authHeaders = buildArborAuthHeaders(username, password);
-      const arborListUrl =
-        "https://api-sandbox2.uk.arbor.sc/rest-v2/students?format=json";
-      // 100ms on the server — ~600 req/min; Retry-After handles any 429s.
-      const DELAY_MS = 100;
-      // Gap between schools: avoids hammering the same endpoint back-to-back.
-      const INTER_SCHOOL_DELAY_MS = 10000; // 10 seconds
-      const LIST_MAX_RETRIES = 5;
-      const DEFAULT_RETRY_AFTER_MS = 65000;
-
-      for (let schoolIdx = 0; schoolIdx < schools.length; schoolIdx++) {
-        const schoolName = schools[schoolIdx];
-        const slugSchool = toSlug(schoolName);
-        logger.info("Scheduled Arbor sync starting", {schoolName});
-
-        // Wait between schools to avoid rate limiting the list endpoint.
-        if (schoolIdx > 0) await sleep(INTER_SCHOOL_DELAY_MS);
-
-        try {
-          await db.collection("arborSyncStatus").doc(slugSchool).set({
-            schoolName,
-            status: "syncing",
-            startedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, {merge: true});
-
-          // Fetch student list with retry on 429.
-          let listResp = null;
-          for (let attempt = 0; attempt <= LIST_MAX_RETRIES; attempt++) {
-            listResp = await fetch(arborListUrl, {
-              method: "GET", headers: authHeaders,
-            });
-            if (listResp.status !== 429) break;
-            const retryHeader = listResp.headers.get("Retry-After");
-            const waitMs = retryHeader ?
-              parseInt(retryHeader, 10) * 1000 :
-              DEFAULT_RETRY_AFTER_MS;
-            logger.info("Scheduled sync: list 429, waiting", {
-              schoolName, waitMs, attempt,
-            });
-            await sleep(waitMs);
-          }
-
-          if (!listResp || !listResp.ok) {
-            const status = listResp ? listResp.status : "no-response";
-            logger.error("Scheduled sync: list fetch failed after retries", {
-              schoolName, status,
-            });
-            await db.collection("arborSyncStatus").doc(slugSchool).set({
-              status: "failed",
-              errorMessage: `List fetch HTTP ${status}`,
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            }, {merge: true});
-            continue;
-          }
-
-          const listJson = await listResp.json();
-          const allRows = extractStudents(listJson);
-          logger.info("Scheduled sync: student list fetched", {
-            schoolName, totalRows: allRows.length,
-          });
-
-          const detailed =
-            await fetchArborStudentDetails(allRows, authHeaders, DELAY_MS, 3);
-
-          const written =
-            await writeStudentsToFirestore(detailed, schoolName, slugSchool);
-
-          await db.collection("arborSyncStatus").doc(slugSchool).set({
-            schoolName,
-            status: "complete",
-            studentCount: written,
-            totalAvailable: allRows.length,
-            lastSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, {merge: true});
-
-          logger.info("Scheduled Arbor sync complete", {schoolName, written});
-
-          // After roster sync, pull today's meal choices for this school.
-          // Runs server-side so no callable timeout concern.
-          try {
-            await syncMealChoicesForSchool(
-                schoolName, authHeaders, londonDateString(), DELAY_MS);
-          } catch (mcErr) {
-            logger.warn("Scheduled meal choices sync failed", {
-              schoolName,
-              error: mcErr && mcErr.message ? mcErr.message : "unknown",
-            });
-          }
-        } catch (schoolErr) {
-          logger.error("Scheduled sync error", {
-            schoolName,
-            error: schoolErr && schoolErr.message ?
-              schoolErr.message : "unknown",
-          });
-          await db.collection("arborSyncStatus").doc(slugSchool).set({
-            status: "failed",
-            errorMessage: schoolErr && schoolErr.message ?
-              schoolErr.message : "unknown",
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, {merge: true}).catch(() => {});
-        }
-      }
-    },
-);
-
-// ---------------------------------------------------------------------------
-// Manual trigger callable: marks a school as pending-sync.
-// The scheduled function handles the actual sync; Android polls
-// arborSyncStatus/{schoolSlug} for progress updates.
-// ---------------------------------------------------------------------------
-exports.triggerArborSync = onCall(
-    {
-      region: "europe-west2",
-      invoker: "public",
-      enforceAppCheck: false,
-      timeoutSeconds: 10,
-    },
-    async (request) => {
-      const schoolName = (
-        request.data &&
-        typeof request.data.schoolName === "string" &&
-        request.data.schoolName.trim()
-      ) || null;
-
-      if (!schoolName) {
-        return {success: false, message: "schoolName is required."};
-      }
-
-      const slugSchool = toSlug(schoolName);
-
-      await db.collection("arborSyncStatus").doc(slugSchool).set({
-        schoolName,
-        status: "pending_trigger",
-        triggeredAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, {merge: true});
-
-      return {
-        success: true,
-        schoolName,
-        message: "Sync queued. Check arborSyncStatus for progress.",
-      };
-    },
-);
 
 // ---------------------------------------------------------------------------
 // Helper: Returns today's ISO date string (YYYY-MM-DD) in Europe/London time.
@@ -1674,7 +1385,6 @@ function londonDateString(dateOverride) {
     day: "2-digit",
   }).split("/").reverse().join("-");
 }
-
 
 // ---------------------------------------------------------------------------
 // Callable: syncTodaysMealChoices
@@ -1719,8 +1429,8 @@ exports.syncTodaysMealChoices = onCall(
           success: true,
           schoolName,
           targetDate,
-          updated,
-          message: `Meal choices sync complete. ${updated} records updated.`,
+          written: updated,
+          message: `Meal choices sync complete. ${updated} records written.`,
         };
       } catch (error) {
         const msg = error && error.message ? error.message : "unknown";

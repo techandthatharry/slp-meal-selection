@@ -73,4 +73,6 @@
     <string name="pause_service_button_with_icon">Pause service</string>
     <string name="resume_service_button_with_icon">Resume service</string>
     <string name="uploading_to_arbor">Uploading meal information to Arbor&#8230;</string>
+    <string name="no_student_records_found">No student records loaded yet. The 5am sync will populate this automatically.</string>
+    <string name="no_records_toast">No student records found for %1$s. The scheduled 5am sync loads the roster automatically.</string>
 </resources>
