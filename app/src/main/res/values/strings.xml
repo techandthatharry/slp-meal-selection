@@ -75,4 +75,10 @@
     <string name="uploading_to_arbor">Uploading meal information to Arbor&#8230;</string>
     <string name="no_student_records_found">No student records loaded yet. The 5am sync will populate this automatically.</string>
     <string name="no_records_toast">No student records found for %1$s. The scheduled 5am sync loads the roster automatically.</string>
+    <string name="todays_service_stats">Today’s service stats</string>
+    <string name="stats_meals_served">Meals served: %1$d</string>
+    <string name="stats_students_loaded">Students loaded: %1$d</string>
+    <string name="stats_arbor_uploaded">Arbor uploaded: %1$d</string>
+    <string name="stats_arbor_failed">Arbor failed: %1$d</string>
+    <string name="stats_service_ended_at">Service ended at: %1$s</string>
 </resources>

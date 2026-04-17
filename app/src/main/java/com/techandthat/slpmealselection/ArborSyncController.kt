@@ -37,18 +37,39 @@ internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
         schoolName = selectedSchool,
         targetDate = todayLondonDate(),
         onSuccess = { data ->
+            val success = data?.get("success") as? Boolean ?: true
             val written = (data?.get("written") as? Number)?.toInt() ?: 0
-            Log.d("MealChoicesSync", "Sync complete: written=$written for $selectedSchool")
+            val serverMsg = data?.get("message") as? String ?: ""
+            Log.d(
+                "MealChoicesSync",
+                "Sync result: success=$success written=$written school=$selectedSchool msg=$serverMsg"
+            )
             isLoadingMeals = false
-            firebaseStatusMessage = null
-            loadChildRecordsFromFirestore()
-            renderKitchenView()
-            if (!silent) {
-                Toast.makeText(
-                    this,
-                    "Meals loaded: $written students",
-                    Toast.LENGTH_SHORT
-                ).show()
+            if (success && written > 0) {
+                firebaseStatusMessage = null
+                loadChildRecordsFromFirestore()
+                renderKitchenView()
+                if (!silent) {
+                    Toast.makeText(this, "Meals loaded: $written students", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            } else if (success && written == 0) {
+                firebaseStatusMessage = "No meal selections found in Arbor for today"
+                renderKitchenView()
+                if (!silent) {
+                    Toast.makeText(
+                        this,
+                        "No meal selections found for today in Arbor",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } else {
+                // Callable returned success=false with an error message from the server.
+                firebaseStatusMessage = "Sync error: $serverMsg"
+                renderKitchenView()
+                if (!silent) {
+                    Toast.makeText(this, "Sync error: $serverMsg", Toast.LENGTH_LONG).show()
+                }
             }
         },
         onFailure = { error ->

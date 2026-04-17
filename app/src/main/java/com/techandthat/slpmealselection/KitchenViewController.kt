@@ -154,6 +154,18 @@ internal fun MainActivity.renderKitchenView() {
         binding.kitchenOrderDietaryRequirements.visibility = View.GONE
     }
 
+    // Handle Service Stats Card
+    val stats = latestServiceStats
+    if (stats != null && !serviceStarted && simulatedDatabase.isEmpty()) {
+        binding.serviceStatsCard.visibility = View.VISIBLE
+        binding.serviceStatsLine1.text = getString(R.string.stats_meals_served, stats.mealsServed)
+        binding.serviceStatsLine2.text = getString(R.string.stats_students_loaded, stats.studentsLoaded)
+        binding.serviceStatsLine3.text = getString(R.string.stats_arbor_uploaded, stats.arborUploaded)
+        binding.serviceStatsLine4.text = getString(R.string.stats_service_ended_at, stats.endedAtLabel)
+    } else {
+        binding.serviceStatsCard.visibility = View.GONE
+    }
+
     // Reorder major kitchen sections based on whether check-in has begun.
     if (hasCheckInStarted) {
         binding.kitchenContent.removeView(binding.kitchenOrderContainer)

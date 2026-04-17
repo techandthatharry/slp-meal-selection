@@ -510,12 +510,15 @@
                         android:fontFamily="@font/gotham"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
+                        android:stateListAnimator="@null"
                         android:text="@string/pause_service_button_with_icon"
                         android:textAllCaps="true"
                         android:textColor="@color/button_secondary_text"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         app:cornerRadius="6dp"
+                        app:elevation="0dp"
+                        app:pressedTranslationZ="0dp"
                         app:strokeColor="@color/button_secondary_border"
                         app:strokeWidth="1dp"
                         android:visibility="gone" />
@@ -603,6 +606,76 @@
                             android:textSize="14sp"
                             android:textStyle="bold"
                             android:visibility="gone" />
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/serviceStatsCard"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:visibility="gone"
+                            app:cardBackgroundColor="@color/kitchen_surface"
+                            app:cardCornerRadius="0dp"
+                            app:cardElevation="0dp"
+                            app:strokeColor="#CCCCCC"
+                            app:strokeWidth="1dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="12dp">
+
+                                <TextView
+                                    android:id="@+id/serviceStatsTitle"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/gotham_ultra"
+                                    android:text="@string/todays_service_stats"
+                                    android:textAllCaps="true"
+                                    android:textColor="@color/kitchen_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:id="@+id/serviceStatsLine1"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:fontFamily="@font/gotham"
+                                    android:textColor="@color/kitchen_text_primary"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/serviceStatsLine2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham"
+                                    android:textColor="@color/kitchen_text_primary"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/serviceStatsLine3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham"
+                                    android:textColor="@color/kitchen_text_primary"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/serviceStatsLine4"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham"
+                                    android:textColor="@color/kitchen_text_primary"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
                     </LinearLayout>
 
                     <LinearLayout

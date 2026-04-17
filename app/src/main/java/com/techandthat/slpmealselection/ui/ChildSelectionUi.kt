@@ -24,6 +24,9 @@ fun renderClassSelectionStep(
     binding.nameSelectionContainer.visibility = android.view.View.GONE
     binding.checkInSuccessContainer.visibility = android.view.View.GONE
 
+    // Ensure inner child-step scroll view can scroll within parent NestedScrollView.
+    androidx.core.view.ViewCompat.setNestedScrollingEnabled(binding.classSelectionContainer, true)
+
     // Extract unique classes that still have unserved meals.
     val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
 
@@ -97,6 +100,9 @@ fun renderNameSelectionStep(
     binding.nameSelectionContainer.visibility = android.view.View.VISIBLE
     binding.checkInSuccessContainer.visibility = android.view.View.GONE
     binding.backToClassesButton.visibility = android.view.View.VISIBLE
+
+    // Ensure inner name-list scroll view can scroll within parent NestedScrollView.
+    androidx.core.view.ViewCompat.setNestedScrollingEnabled(binding.nameListScroll, true)
 
     binding.nameButtonsContainer.removeAllViews()
 

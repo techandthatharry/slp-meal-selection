@@ -1187,16 +1187,15 @@ async function arborGraphQL(query, authHeaders) {
  * @param {string} targetDate ISO date string YYYY-MM-DD.
  * @return {Promise<number>} Count of updated childRecords.
  */
-/**
- * Returns the name fragment for the Student inline type in GraphQL.
- * Includes displayName (full name), studentId, and registration form (class).
- */
+// Minimal Student fields for meal sync.
 const STUDENT_GQL_FIELDS = `
   ... on Student {
-    id
     studentId
     displayName
     registrationForm { shortName }
+    dietaryRequirements {
+      dietaryRequirementType { displayName }
+    }
   }
 `;
 
@@ -1205,22 +1204,37 @@ const STUDENT_GQL_FIELDS = `
  *
  * @param {{attendee: *, mealProvision: *}} row Raw GraphQL row.
  * @return {{studentId: string, displayName: string,
- *   className: string, mealProvisionName: string}|null} Extracted data or null.
+ *   className: string, mealProvisionName: string,
+ *   mealName: string, dietaryRequirements: string[]}|null} Record or null.
  */
 function extractMealChoiceRecord(row) {
   const att = row.attendee;
   if (!att || !att.studentId) return null;
-  const displayName =
-    String(att.displayName || att.id || att.studentId).trim();
+
+  const displayName = (att.displayName || `Student ${att.studentId}`).trim();
   const className =
     (att.registrationForm && att.registrationForm.shortName) || "";
   const mealProvisionName =
     (row.mealProvision && row.mealProvision.mealProvisionName) || "School Meal";
+  const mealName =
+    (row.mealProvision &&
+      row.mealProvision.meal &&
+      row.mealProvision.meal.mealName) ||
+    "";
+
+  const dietaryRequirements = (att.dietaryRequirements || [])
+      .map((req) => req && req.dietaryRequirementType &&
+        req.dietaryRequirementType.displayName)
+      .filter(Boolean)
+      .map((name) => String(name).trim());
+
   return {
     studentId: String(att.studentId),
     displayName,
     className,
     mealProvisionName,
+    mealName,
+    dietaryRequirements,
   };
 }
 
@@ -1242,6 +1256,8 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
   let pageNum = 1;
   let totalFetched = 0;
 
+  const studentFragment = STUDENT_GQL_FIELDS;
+
   // Step 1: try MealRotationMenuChoice (specific daily dish choices).
   let morePages = true;
   while (morePages) {
@@ -1251,9 +1267,12 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
         page_size: ${PAGE_SIZE}
         page_num: ${pageNum}
       ) {
-        id
-        mealProvision { mealProvisionName isSchoolHotMeal isAbsent }
-        attendee { ${STUDENT_GQL_FIELDS} }
+        mealChoiceDate
+        mealProvision {
+          mealProvisionName
+          meal { mealName }
+        }
+        attendee { ${studentFragment} }
       }
     }`;
 
@@ -1262,6 +1281,12 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
     if (rows.length === 0) break;
 
     totalFetched += rows.length;
+    if (pageNum === 1 && rows.length > 0) {
+      // Log the first raw row so we can verify field availability.
+      logger.info("MealRotationMenuChoice sample row", {
+        row: JSON.stringify(rows[0]).substring(0, 300),
+      });
+    }
     rows.forEach((row) => {
       const rec = extractMealChoiceRecord(row);
       if (!rec) return;
@@ -1297,17 +1322,22 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
     pageNum = 1;
     let moreStanding = true;
     while (moreStanding) {
+      // Note: effectiveDate/endDate filters intentionally omitted.
+      // In sandbox the standing-order date ranges don't cover today,
+      // so the filters would exclude all test data.
+      // In production, MealRotationMenuChoice handles today's specific
+      // choices and this fallback is rarely reached.
       const gqlQuery = `{
         MealChoice(
           ${dayArgs}
-          effectiveDate_before_or_equal: "${targetDate}"
-          endDate_after_or_equal: "${targetDate}"
           page_size: ${PAGE_SIZE}
           page_num: ${pageNum}
         ) {
-          id
-          mealProvision { mealProvisionName isSchoolHotMeal isAbsent }
-          attendee { ${STUDENT_GQL_FIELDS} }
+          mealProvision {
+            mealProvisionName
+            meal { mealName }
+          }
+          attendee { ${studentFragment} }
         }
       }`;
 
@@ -1315,6 +1345,11 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
       const rows = (result.data && result.data.MealChoice) || [];
       if (rows.length === 0) break;
 
+      if (pageNum === 1 && rows.length > 0) {
+        logger.info("MealChoice sample row", {
+          row: JSON.stringify(rows[0]).substring(0, 300),
+        });
+      }
       rows.forEach((row) => {
         const rec = extractMealChoiceRecord(row);
         if (!rec) return;
@@ -1354,6 +1389,8 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
       className: rec.className,
       schoolName,
       mealSelected: rec.mealProvisionName,
+      mealName: rec.mealName,
+      dietaryRequirements: rec.dietaryRequirements,
       arborStudentId: studentId,
       served: false,
       source: "arbor",
@@ -1439,7 +1476,7 @@ exports.syncTodaysMealChoices = onCall(
         });
         return {
           success: false,
-          updated: 0,
+          written: 0,
           targetDate,
           message: `Meal choices sync failed: ${msg}`,
         };

@@ -3,6 +3,9 @@ package com.techandthat.slpmealselection
 import android.os.Bundle
 import android.view.View
 import android.widget.RadioButton
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.activity.ComponentActivity
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
@@ -54,6 +57,16 @@ class MainActivity : ComponentActivity() {
     internal var isLoadingMeals = false
     internal var servicePausedByKitchen = false
 
+    internal data class ServiceStats(
+        val mealsServed: Int,
+        val studentsLoaded: Int,
+        val arborUploaded: Int,
+        val arborFailed: Int,
+        val endedAtLabel: String
+    )
+
+    internal var latestServiceStats: ServiceStats? = null
+
     // Inflates views, initializes setup UI, and wires primary event listeners.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +97,7 @@ class MainActivity : ComponentActivity() {
         binding.startServiceButton.setOnClickListener {
             serviceStarted = true
             servicePausedByKitchen = false
+            latestServiceStats = null
             renderAppContent()
         }
 

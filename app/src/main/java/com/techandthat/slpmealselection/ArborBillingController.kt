@@ -4,6 +4,9 @@ import android.util.Log
 import android.widget.Toast
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.techandthat.slpmealselection.model.ChildScreen
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // Extension functions managing Arbor billing queue upload and end-of-service cleanup.
 
@@ -74,9 +77,18 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
             firebaseStatusMessage = "Arbor billing uploaded ($uploaded) and queue cleaned ($deleted). Ending service..."
             renderKitchenView()
 
+            val statsAtEnd = MainActivity.ServiceStats(
+                mealsServed = simulatedDatabase.count { it.served },
+                studentsLoaded = simulatedDatabase.size,
+                arborUploaded = uploaded,
+                arborFailed = failed,
+                endedAtLabel = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            )
+
             repository.deleteAllRecords(
                 schoolName = selectedSchool,
                 onSuccess = {
+                    latestServiceStats = statsAtEnd
                     simulatedDatabase.clear()
                     activeOrder = null
                     selectedClass = null
