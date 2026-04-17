@@ -56,16 +56,24 @@ class MainActivity : ComponentActivity() {
     internal var firebaseStatusMessage: String? = null
     internal var isLoadingMeals = false
     internal var servicePausedByKitchen = false
+    internal var showingServiceStats = false
 
     internal data class ServiceStats(
         val mealsServed: Int,
         val studentsLoaded: Int,
         val arborUploaded: Int,
         val arborFailed: Int,
-        val endedAtLabel: String
+        val endedAtLabel: String,
+        val mealsLoadedTimeLabel: String,
+        val prepDurationMinutes: Int,
+        val mealVolumes: Map<String, Int>,
+        val weekTotal: Int = 0,
+        val monthTotal: Int = 0
     )
 
     internal var latestServiceStats: ServiceStats? = null
+    internal var mealsLoadedTime: Long? = null
+    internal var serviceStartedTime: Long? = null
 
     // Inflates views, initializes setup UI, and wires primary event listeners.
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,6 +106,7 @@ class MainActivity : ComponentActivity() {
             serviceStarted = true
             servicePausedByKitchen = false
             latestServiceStats = null
+            serviceStartedTime = System.currentTimeMillis()
             renderAppContent()
         }
 
@@ -189,6 +198,12 @@ class MainActivity : ComponentActivity() {
         }
 
         binding.backToSetupButton.setOnClickListener { returnToSetup() }
+
+        binding.returnToDashboardButton.setOnClickListener {
+            showingServiceStats = false
+            latestServiceStats = null
+            renderAppContent()
+        }
     }
 
     // Delegates rendering to Kitchen or Child view based on selected tablet type.

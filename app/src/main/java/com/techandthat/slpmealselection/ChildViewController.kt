@@ -10,12 +10,13 @@ import com.techandthat.slpmealselection.ui.renderSuccessStep
 // Extension function for rendering the child tablet dashboard and step transitions.
 internal fun MainActivity.renderChildView() {
     binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.kitchen_header_bg))
-    binding.headerTitle.text = getString(R.string.child_facing)
-    binding.headerSubtitle.text = getString(R.string.child_tablet_mode)
+    binding.headerTitle.text = getString(R.string.header_service_ongoing)
+    binding.headerLogo.visibility = View.VISIBLE
+    binding.bloemfonteinLogo.visibility = View.VISIBLE
     binding.loadTodaysMealsButton.visibility = View.GONE
     binding.changeSchoolButton.visibility = View.GONE
     binding.endServiceButton.visibility = View.GONE
-    binding.contentTitle.text = getString(R.string.child_dashboard_title)
+    binding.contentTitle.visibility = View.GONE
     binding.contentSubtitle.text = getString(R.string.child_dashboard_subtitle_simple)
 
     binding.kitchenContent.visibility = View.GONE

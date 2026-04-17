@@ -22,6 +22,14 @@
     <string name="child_facing">Child Facing</string>
     <string name="child_tablet_mode">Child tablet mode</string>
     <string name="kitchen_dashboard_title">Meal Preparation Dashboard</string>
+    <string name="todays_service_stats_title">Today\'s Service Stats</string>
+    <string name="stats_today">Today</string>
+    <string name="stats_week">This Week</string>
+    <string name="stats_month">This Month</string>
+    <string name="stats_arbor_sync">Arbor Sync</string>
+    <string name="stats_trends_title">Daily Trends (Last 7 Days)</string>
+    <string name="start_new_session">Start New Session</string>
+    <string name="percent_format">%1$d%%</string>
     <string name="load_todays_meals">Load today’s meals</string>
     <string name="load_todays_meals_placeholder">Load today’s meals action coming soon.</string>
     <string name="child_dashboard_title">Canteen Check-In</string>
@@ -81,4 +89,8 @@
     <string name="stats_arbor_uploaded">Arbor uploaded: %1$d</string>
     <string name="stats_arbor_failed">Arbor failed: %1$d</string>
     <string name="stats_service_ended_at">Service ended at: %1$s</string>
+    <string name="header_prep_dashboard">MEAL PREPARATION DASHBOARD</string>
+    <string name="header_service_ongoing">SERVICE ONGOING</string>
+    <string name="header_summary_dashboard">TODAY\'S SERVICE DASHBOARD</string>
+    <string name="stats_meal_breakdown_title">TODAY\'S MEAL BREAKDOWN</string>
 </resources>

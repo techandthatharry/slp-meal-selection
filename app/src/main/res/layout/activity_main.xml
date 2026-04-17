@@ -1,95 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/kitchen_bg">
+    android:background="@color/kitchen_bg"
+    tools:context=".MainActivity">
 
-    <LinearLayout
+    <FrameLayout
         android:id="@+id/splashContainer"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:background="@color/slp_blue"
-        android:gravity="center"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/kitchen_header_bg"
+        android:elevation="10dp"
+        android:visibility="visible">
 
         <ImageView
             android:id="@+id/splashLogo"
-            android:layout_width="440dp"
-            android:layout_height="440dp"
-            android:contentDescription="@string/slp_logo" />
-
-        <TextView
-            android:id="@+id/splashTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:fontFamily="@font/gotham"
-            android:text="@string/meal_selection_kitchen"
-            android:textColor="@color/white"
-            android:textSize="34sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+            android:layout_width="280dp"
+            android:layout_height="280dp"
+            android:layout_gravity="center"
+            android:contentDescription="@string/slp_logo"
+            android:src="@drawable/slp_logo" />
+    </FrameLayout>
 
     <ScrollView
         android:id="@+id/setupContainer"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:background="@color/kitchen_bg"
-        android:fillViewport="true"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
         <LinearLayout
             android:id="@+id/setupFormContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center"
             android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/gotham"
-                android:gravity="center"
-                android:text="@string/setup_title"
-                android:textColor="@color/kitchen_text_primary"
-                android:textSize="34sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="@font/gotham"
-                android:gravity="center"
-                android:text="@string/setup_subtitle"
-                android:textColor="@color/kitchen_text_secondary"
-                android:textSize="16sp" />
+            android:padding="24dp">
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                app:cardBackgroundColor="@color/kitchen_surface"
-                app:cardCornerRadius="0dp"
-                app:cardElevation="0dp"
-                app:strokeColor="#CCCCCC"
-                app:strokeWidth="1dp"
-                app:cardUseCompatPadding="true">
+                android:maxWidth="500dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="18dp">
+                    android:padding="24dp">
 
                     <TextView
                         android:layout_width="match_parent"
@@ -273,7 +236,7 @@
             android:layout_width="match_parent"
             android:layout_height="144dp"
             android:background="@color/kitchen_header_bg"
-            android:gravity="center_vertical"
+            android:gravity="center"
             android:orientation="horizontal"
             android:paddingHorizontal="16dp">
 
@@ -281,12 +244,21 @@
                 android:id="@+id/headerLogo"
                 android:layout_width="128dp"
                 android:layout_height="128dp"
-                android:contentDescription="@string/slp_logo" />
+                android:contentDescription="@string/slp_logo"
+                android:src="@drawable/slp_logo" />
+
+            <ImageView
+                android:id="@+id/bloemfonteinLogo"
+                android:layout_width="wrap_content"
+                android:layout_height="100dp"
+                android:layout_marginHorizontal="24dp"
+                android:adjustViewBounds="true"
+                android:scaleType="fitCenter"
+                android:src="@drawable/bloemfontein_logo" />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -297,16 +269,6 @@
                     android:fontFamily="@font/gotham"
                     android:textColor="@color/white"
                     android:textSize="24sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/headerSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:fontFamily="@font/gotham"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -407,7 +369,7 @@
                     android:textColor="@color/kitchen_text_primary"
                     android:textSize="28sp"
                     android:textStyle="bold"
-                    android:visibility="visible" />
+                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/contentSubtitle"
@@ -500,7 +462,6 @@
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
 
-                    <!-- Pause/Resume service sits directly below the meals box -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/pauseServiceButton"
                         android:layout_width="match_parent"
@@ -734,6 +695,358 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/serviceEndedContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <GridLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:alignmentMode="alignMargins"
+                        android:columnCount="2"
+                        android:rowCount="3">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_rowWeight="1"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="8dp"
+                            app:cardBackgroundColor="@color/kitchen_surface"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/gotham"
+                                    android:text="@string/stats_today"
+                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textSize="14sp"
+                                    android:textAllCaps="true"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/statsTodayValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham_ultra"
+                                    android:text="0"
+                                    android:textColor="@color/slp_blue"
+                                    android:textSize="32sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_rowWeight="1"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="8dp"
+                            app:cardBackgroundColor="@color/kitchen_surface"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:id="@+id/statsWeekLabel"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/gotham"
+                                    android:text="@string/stats_week"
+                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textSize="14sp"
+                                    android:textAllCaps="true"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/statsWeekValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham_ultra"
+                                    android:text="0"
+                                    android:textColor="@color/kitchen_success"
+                                    android:textSize="32sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_rowWeight="1"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="8dp"
+                            app:cardBackgroundColor="@color/kitchen_surface"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:id="@+id/statsMonthLabel"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/gotham"
+                                    android:text="@string/stats_month"
+                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textSize="14sp"
+                                    android:textAllCaps="true"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/statsMonthValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham_ultra"
+                                    android:text="0"
+                                    android:textColor="#9C27B0"
+                                    android:textSize="32sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_rowWeight="1"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="8dp"
+                            app:cardBackgroundColor="@color/kitchen_surface"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/gotham"
+                                    android:text="@string/stats_arbor_sync"
+                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textSize="14sp"
+                                    android:textAllCaps="true"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/statsArborValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham_ultra"
+                                    android:text="100%"
+                                    android:textColor="@color/kitchen_warning"
+                                    android:textSize="32sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_rowWeight="1"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="8dp"
+                            app:cardBackgroundColor="@color/kitchen_surface"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/gotham"
+                                    android:text="LOADED AT"
+                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textSize="14sp"
+                                    android:textAllCaps="true"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/statsLoadedAtValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham_ultra"
+                                    android:text="00:00"
+                                    android:textColor="#FF5722"
+                                    android:textSize="32sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_rowWeight="1"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="8dp"
+                            app:cardBackgroundColor="@color/kitchen_surface"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="2dp"
+                            app:strokeWidth="0dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:padding="20dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="@font/gotham"
+                                    android:text="PREP TIME"
+                                    android:textColor="@color/kitchen_text_secondary"
+                                    android:textSize="14sp"
+                                    android:textAllCaps="true"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/statsPrepTimeValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:fontFamily="@font/gotham_ultra"
+                                    android:text="0m"
+                                    android:textColor="#795548"
+                                    android:textSize="32sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                    </GridLayout>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/mealBreakdownCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="240dp"
+                        android:layout_margin="8dp"
+                        app:cardBackgroundColor="@color/kitchen_surface"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:strokeWidth="0dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical"
+                            android:padding="20dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/gotham"
+                                android:text="@string/stats_meal_breakdown_title"
+                                android:textColor="@color/kitchen_text_secondary"
+                                android:textSize="14sp"
+                                android:textAllCaps="true"
+                                android:textStyle="bold" />
+
+                            <LinearLayout
+                                android:id="@+id/mealVolumeGraphContainer"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:layout_marginTop="16dp"
+                                android:gravity="bottom"
+                                android:orientation="horizontal"
+                                android:paddingBottom="8dp">
+                                <!-- Bars will be added here dynamically -->
+                            </LinearLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="240dp"
+                        android:layout_margin="8dp"
+                        app:cardBackgroundColor="@color/kitchen_surface"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:strokeWidth="0dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical"
+                            android:padding="20dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/gotham"
+                                android:text="@string/stats_trends_title"
+                                android:textColor="@color/kitchen_text_secondary"
+                                android:textSize="14sp"
+                                android:textAllCaps="true"
+                                android:textStyle="bold" />
+
+                            <LinearLayout
+                                android:id="@+id/statsGraphContainer"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:layout_marginTop="16dp"
+                                android:gravity="bottom"
+                                android:orientation="horizontal"
+                                android:paddingBottom="8dp">
+                                <!-- Bars will be added here dynamically -->
+                            </LinearLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/returnToDashboardButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="64dp"
+                        android:layout_margin="8dp"
+                        android:backgroundTint="@color/slp_blue"
+                        android:fontFamily="@font/gotham"
+                        android:text="@string/start_new_session"
+                        android:textAllCaps="true"
+                        android:textColor="@color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="12dp" />
+
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/childContent"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -912,7 +1225,8 @@
                 android:layout_height="56dp"
                 android:layout_marginStart="10dp"
                 android:scaleType="fitCenter"
-                android:contentDescription="@string/tech_and_that_logo" />
+                android:contentDescription="@string/tech_and_that_logo"
+                android:src="@drawable/tech_and_that_logo" />
         </LinearLayout>
     </LinearLayout>
 

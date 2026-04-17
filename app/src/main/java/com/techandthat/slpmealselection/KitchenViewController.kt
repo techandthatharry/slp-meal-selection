@@ -38,19 +38,33 @@ internal fun MainActivity.applySecondaryButtonStyle(button: MaterialButton) {
 // Renders kitchen dashboard state, button availability, and prep summary.
 internal fun MainActivity.renderKitchenView() {
     binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.kitchen_header_bg))
-    binding.headerTitle.text = getString(R.string.kitchen_side)
-    binding.headerSubtitle.text = getString(R.string.school_selected, selectedSchool)
-    binding.contentTitle.text = getString(R.string.kitchen_dashboard_title)
-    binding.contentSubtitle.visibility = View.GONE
-
-    binding.kitchenContent.visibility = View.VISIBLE
-    binding.childContent.visibility = View.GONE
 
     val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
     val shouldHideLoadAndStart = serviceStarted
     val outstandingMeals = simulatedDatabase.filterNot { it.served }
     val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
     val hasPrepData = outstandingMeals.isNotEmpty()
+
+    binding.headerTitle.text = when {
+        serviceStarted && hasCheckInStarted -> getString(R.string.header_service_ongoing)
+        serviceStarted -> getString(R.string.header_service_ongoing)
+        showingServiceStats -> getString(R.string.header_summary_dashboard)
+        else -> getString(R.string.header_prep_dashboard)
+    }
+    binding.headerLogo.visibility = View.VISIBLE
+    binding.bloemfonteinLogo.visibility = View.VISIBLE
+
+    if (showingServiceStats) {
+        renderServiceStatsView()
+        return
+    }
+
+    binding.contentTitle.text = if (serviceStarted) "SERVICE IN PROGRESS" else getString(R.string.kitchen_dashboard_title)
+    binding.contentSubtitle.visibility = View.GONE
+
+    binding.kitchenContent.visibility = View.VISIBLE
+    binding.serviceEndedContent.visibility = View.GONE
+    binding.childContent.visibility = View.GONE
 
     // Update service status messaging and prep card title.
     val statusText = when {
@@ -160,8 +174,9 @@ internal fun MainActivity.renderKitchenView() {
         binding.serviceStatsCard.visibility = View.VISIBLE
         binding.serviceStatsLine1.text = getString(R.string.stats_meals_served, stats.mealsServed)
         binding.serviceStatsLine2.text = getString(R.string.stats_students_loaded, stats.studentsLoaded)
-        binding.serviceStatsLine3.text = getString(R.string.stats_arbor_uploaded, stats.arborUploaded)
-        binding.serviceStatsLine4.text = getString(R.string.stats_service_ended_at, stats.endedAtLabel)
+        binding.serviceStatsLine3.text = "Meals loaded at: ${stats.mealsLoadedTimeLabel}"
+        binding.serviceStatsLine4.text = "Prep time: ${stats.prepDurationMinutes} mins"
+        // TODO: Render pie chart/volumes here
     } else {
         binding.serviceStatsCard.visibility = View.GONE
     }
@@ -180,4 +195,177 @@ internal fun MainActivity.renderKitchenView() {
     }
 
     binding.appScrollView.scrollTo(0, 0)
+}
+
+internal fun MainActivity.renderServiceStatsView() {
+    binding.contentTitle.text = getString(R.string.todays_service_stats_title)
+    binding.contentSubtitle.visibility = View.GONE
+    binding.kitchenContent.visibility = View.GONE
+    binding.childContent.visibility = View.GONE
+    binding.serviceEndedContent.visibility = View.VISIBLE
+
+    // Hide control buttons in stats view
+    binding.endServiceButton.visibility = View.GONE
+    binding.changeSchoolButton.visibility = View.GONE
+    binding.backToSetupButton.visibility = View.GONE
+
+    val stats = latestServiceStats
+    if (stats != null) {
+        binding.statsTodayValue.text = stats.mealsServed.toString()
+        
+        // Original stats
+        binding.statsWeekValue.text = stats.weekTotal.toString()
+        binding.statsWeekLabel.text = getString(R.string.stats_week)
+        
+        binding.statsMonthValue.text = stats.monthTotal.toString()
+        binding.statsMonthLabel.text = getString(R.string.stats_month)
+        
+        // New stats added to the new cards
+        binding.statsLoadedAtValue.text = stats.mealsLoadedTimeLabel
+        binding.statsPrepTimeValue.text = "${stats.prepDurationMinutes}m"
+        
+        val syncPercent = if (stats.studentsLoaded > 0) {
+            (stats.arborUploaded * 100) / stats.studentsLoaded
+        } else 100
+        binding.statsArborValue.text = getString(R.string.percent_format, syncPercent)
+        
+        if (syncPercent < 100) {
+            binding.statsArborValue.setTextColor(ContextCompat.getColor(this, R.color.kitchen_danger))
+        } else {
+            binding.statsArborValue.setTextColor(ContextCompat.getColor(this, R.color.kitchen_success))
+        }
+
+        // Render Meal Volumes (Simple Bar Chart instead of Pie Chart for better fit)
+        renderMealVolumeBars(stats.mealVolumes)
+    }
+
+    renderStatsGraph()
+    binding.appScrollView.post {
+        binding.appScrollView.scrollTo(0, 0)
+    }
+}
+
+private fun MainActivity.renderMealVolumeBars(volumes: Map<String, Int>) {
+    binding.mealVolumeGraphContainer.removeAllViews()
+    if (volumes.isEmpty()) return
+
+    val maxVolume = volumes.values.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val density = resources.displayMetrics.density
+
+    volumes.forEach { (meal, count) ->
+        val barWrapper = android.widget.LinearLayout(this).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            orientation = android.widget.LinearLayout.VERTICAL
+            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+        }
+
+        val valueLabel = android.widget.TextView(this).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            text = count.toString()
+            textSize = 10f
+            setTextColor(ContextCompat.getColor(this@renderMealVolumeBars, R.color.kitchen_text_secondary))
+        }
+
+        val bar = android.view.View(this).apply {
+            val barHeightDp = (count.toFloat() / maxVolume * 120).coerceAtLeast(4f)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                resources.getDimensionPixelSize(R.dimen.stats_bar_width),
+                (barHeightDp * density).toInt()
+            ).apply {
+                topMargin = (2 * density).toInt()
+                bottomMargin = (4 * density).toInt()
+            }
+            background = ContextCompat.getDrawable(this@renderMealVolumeBars, R.drawable.stats_bar_bg)
+            backgroundTintList = android.content.res.ColorStateList.valueOf(
+                ContextCompat.getColor(this@renderMealVolumeBars, R.color.slp_blue)
+            )
+        }
+
+        val label = android.widget.TextView(this).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            text = meal.take(5) // Shorten meal name
+            textSize = 9f
+            gravity = android.view.Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@renderMealVolumeBars, R.color.kitchen_text_secondary))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+
+        barWrapper.addView(valueLabel)
+        barWrapper.addView(bar)
+        barWrapper.addView(label)
+        binding.mealVolumeGraphContainer.addView(barWrapper)
+    }
+}
+
+internal fun MainActivity.renderStatsGraph() {
+    binding.statsGraphContainer.removeAllViews()
+    // Using a more realistic spread of mock data
+    val dailyCounts = listOf(42, 38, 45, 41, 39, 0, latestServiceStats?.mealsServed ?: 0)
+    val maxCount = dailyCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val density = resources.displayMetrics.density
+
+    dailyCounts.forEachIndexed { index, count ->
+        val barWrapper = android.widget.LinearLayout(this).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            orientation = android.widget.LinearLayout.VERTICAL
+            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+        }
+
+        // Add value label above bar if count > 0
+        if (count > 0) {
+            val valueLabel = android.widget.TextView(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                text = count.toString()
+                textSize = 10f
+                setTextColor(ContextCompat.getColor(this@renderStatsGraph, R.color.kitchen_text_secondary))
+                android.view.View.TEXT_ALIGNMENT_CENTER
+            }
+            barWrapper.addView(valueLabel)
+        }
+
+        val bar = android.view.View(this).apply {
+            // Max height is 120dp to leave room for labels
+            val barHeightDp = (count.toFloat() / maxCount * 120).coerceAtLeast(4f)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                resources.getDimensionPixelSize(R.dimen.stats_bar_width),
+                (barHeightDp * density).toInt()
+            ).apply {
+                topMargin = (2 * density).toInt()
+                bottomMargin = (4 * density).toInt()
+            }
+            background = ContextCompat.getDrawable(this@renderStatsGraph, R.drawable.stats_bar_bg)
+            backgroundTintList = android.content.res.ColorStateList.valueOf(
+                if (index == dailyCounts.size - 1) ContextCompat.getColor(this@renderStatsGraph, R.color.slp_blue)
+                else ContextCompat.getColor(this@renderStatsGraph, R.color.button_secondary_border)
+            )
+        }
+
+        val label = android.widget.TextView(this).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            text = when(index) {
+                0 -> "Mon"; 1 -> "Tue"; 2 -> "Wed"; 3 -> "Thu"; 4 -> "Fri"; 5 -> "Sat"; 6 -> "Sun"
+                else -> ""
+            }
+            textSize = 10f
+            gravity = android.view.Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@renderStatsGraph, R.color.kitchen_text_secondary))
+        }
+
+        barWrapper.addView(bar)
+        barWrapper.addView(label)
+        binding.statsGraphContainer.addView(barWrapper)
+    }
 }

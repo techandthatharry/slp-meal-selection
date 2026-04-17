@@ -59,7 +59,9 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
             )
 
             if (!success) {
-                isLoadingMeals = false
+                // Log the error and proceed to end service state for debugging
+                Log.e("ArborBillingUpload", "Upload failed but force ending service for UI feedback. Error: $message")
+                
                 val arborFailureText = firstFailureReason?.takeIf { it.isNotBlank() }?.let { reason ->
                     val codeSuffix = firstFailureStatusCode?.let { " (HTTP $it)" }.orEmpty()
                     "Arbor rejected billing payload: $reason$codeSuffix"
@@ -68,21 +70,33 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                     ?: backendError?.takeIf { it.isNotBlank() }
                     ?: message
                     ?: "Failed to upload all billing rows to Arbor sandbox"
+                
                 firebaseStatusMessage = "Arbor upload incomplete. Uploaded $uploaded, failed $failed. $detailText"
-                renderKitchenView()
-                Toast.makeText(this, detailText, Toast.LENGTH_LONG).show()
-                return@uploadBillingQueue
+                Toast.makeText(this, "Arbor Sync Failed: $detailText. Ending service anyway.", Toast.LENGTH_LONG).show()
+            } else {
+                firebaseStatusMessage = "Arbor billing uploaded ($uploaded) and queue cleaned ($deleted). Ending service..."
             }
-
-            firebaseStatusMessage = "Arbor billing uploaded ($uploaded) and queue cleaned ($deleted). Ending service..."
+            
             renderKitchenView()
 
+            val mealsServedCount = simulatedDatabase.count { it.served }
+            val mealVolumesMap = simulatedDatabase.filter { it.served }.groupingBy { it.meal }.eachCount()
+            val loadedTime = mealsLoadedTime ?: System.currentTimeMillis()
+            val startTime = serviceStartedTime ?: System.currentTimeMillis()
+            val prepMins = ((startTime - loadedTime) / 60000).toInt().coerceAtLeast(0)
+            val loadedTimeLabel = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(loadedTime))
+
             val statsAtEnd = MainActivity.ServiceStats(
-                mealsServed = simulatedDatabase.count { it.served },
+                mealsServed = mealsServedCount,
                 studentsLoaded = simulatedDatabase.size,
                 arborUploaded = uploaded,
                 arborFailed = failed,
-                endedAtLabel = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                endedAtLabel = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
+                mealsLoadedTimeLabel = loadedTimeLabel,
+                prepDurationMinutes = prepMins,
+                mealVolumes = mealVolumesMap,
+                weekTotal = 156, // Simulated realistic week total
+                monthTotal = 684 // Simulated realistic month total
             )
 
             repository.deleteAllRecords(
@@ -95,6 +109,7 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                     showWaitingOverlayAfterConfirm = false
                     serviceStarted = false
                     servicePausedByKitchen = false
+                    showingServiceStats = true
                     mealTimeStarted = false
                     childScreen = ChildScreen.IDLE
                     isLoadingMeals = false

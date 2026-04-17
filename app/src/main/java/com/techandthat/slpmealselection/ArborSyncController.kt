@@ -47,6 +47,7 @@ internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
             isLoadingMeals = false
             if (success && written > 0) {
                 firebaseStatusMessage = null
+                mealsLoadedTime = System.currentTimeMillis()
                 loadChildRecordsFromFirestore()
                 renderKitchenView()
                 if (!silent) {
