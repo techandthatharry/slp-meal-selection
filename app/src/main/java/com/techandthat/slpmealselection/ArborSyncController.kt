@@ -75,6 +75,7 @@ internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
         },
         onFailure = { error ->
             Log.e("MealChoicesSync", "Meal choices sync failed", error)
+            repository.logErrorToFirebase("MealChoicesSync", error, selectedSchool)
             isLoadingMeals = false
             firebaseStatusMessage = "Failed to load meals: ${error.message}"
             renderKitchenView()

@@ -61,13 +61,11 @@ internal fun MainActivity.returnToSetup() {
     binding.passwordInput.text?.clear()
     binding.setupErrorText.visibility = View.GONE
 
-    if (activeOrder?.served == true) {
-        activeOrder = null
-        showWaitingOverlayAfterConfirm = false
-        selectedClass = null
-        mealTimeStarted = false
-        childScreen = ChildScreen.IDLE
-    }
+    activeOrder = null
+    showWaitingOverlayAfterConfirm = false
+    selectedClass = null
+    mealTimeStarted = false
+    childScreen = ChildScreen.IDLE
 }
 
 // Opens confirmation dialog before ending service and deleting records.

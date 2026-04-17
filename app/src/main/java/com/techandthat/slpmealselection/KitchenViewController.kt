@@ -93,7 +93,7 @@ internal fun MainActivity.renderKitchenView() {
 
     binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
     binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
-    binding.pauseServiceButton.visibility = if (serviceStarted) View.VISIBLE else View.GONE
+    binding.pauseServiceHeaderButton.visibility = if (serviceStarted) View.VISIBLE else View.GONE
 
     binding.startServiceButton.isEnabled = !serviceStarted && hasPrepData
     if (binding.startServiceButton.isEnabled) {
@@ -102,7 +102,7 @@ internal fun MainActivity.renderKitchenView() {
         applySecondaryButtonStyle(binding.startServiceButton)
     }
 
-    binding.pauseServiceButton.text = if (servicePausedByKitchen) {
+    binding.pauseServiceHeaderButton.text = if (servicePausedByKitchen) {
         getString(R.string.resume_service_button_with_icon)
     } else {
         getString(R.string.pause_service_button_with_icon)
@@ -120,9 +120,8 @@ internal fun MainActivity.renderKitchenView() {
     // Show brief loading indicator while checking Firebase cache.
     if (isLoadingMeals) {
         binding.prepLoadingText.visibility = View.VISIBLE
-        binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
         binding.prepLoadingProgress.visibility = View.VISIBLE
-        binding.prepLoadingProgress.progress = 0
+        binding.prepLoadingProgress.isIndeterminate = true
     } else {
         binding.prepLoadingText.visibility = View.GONE
         binding.prepLoadingProgress.visibility = View.GONE
@@ -133,7 +132,7 @@ internal fun MainActivity.renderKitchenView() {
     binding.changeSchoolButton.isEnabled = !serviceStarted
     binding.endServiceButton.isEnabled = serviceStarted || simulatedDatabase.isNotEmpty() || activeOrder != null
 
-    if (firebaseStatusMessage.isNullOrBlank()) {
+    if (firebaseStatusMessage.isNullOrBlank() || isLoadingMeals) {
         binding.firebaseStatusText.visibility = View.GONE
     } else {
         binding.firebaseStatusText.text = firebaseStatusMessage
@@ -158,7 +157,7 @@ internal fun MainActivity.renderKitchenView() {
         if (dietaryText.isNullOrBlank()) {
             binding.kitchenOrderDietaryRequirements.visibility = View.GONE
         } else {
-            binding.kitchenOrderDietaryRequirements.text = dietaryText
+            binding.kitchenOrderDietaryRequirements.text = "DIETARY: $dietaryText"
             binding.kitchenOrderDietaryRequirements.visibility = View.VISIBLE
         }
 
@@ -207,7 +206,7 @@ internal fun MainActivity.renderServiceStatsView() {
     // Hide control buttons in stats view
     binding.endServiceButton.visibility = View.GONE
     binding.changeSchoolButton.visibility = View.GONE
-    binding.backToSetupButton.visibility = View.GONE
+    binding.pauseServiceHeaderButton.visibility = View.GONE
 
     val stats = latestServiceStats
     if (stats != null) {

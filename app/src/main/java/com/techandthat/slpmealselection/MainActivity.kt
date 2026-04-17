@@ -110,7 +110,9 @@ class MainActivity : ComponentActivity() {
             renderAppContent()
         }
 
-        binding.pauseServiceButton.setOnClickListener {
+        binding.headerLogo.setOnClickListener { returnToSetup() }
+
+        binding.pauseServiceHeaderButton.setOnClickListener {
             servicePausedByKitchen = !servicePausedByKitchen
             renderAppContent()
         }
@@ -196,8 +198,6 @@ class MainActivity : ComponentActivity() {
                 }
             )
         }
-
-        binding.backToSetupButton.setOnClickListener { returnToSetup() }
 
         binding.returnToDashboardButton.setOnClickListener {
             showingServiceStats = false

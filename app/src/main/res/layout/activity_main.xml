@@ -234,7 +234,7 @@
         <LinearLayout
             android:id="@+id/headerBar"
             android:layout_width="match_parent"
-            android:layout_height="144dp"
+            android:layout_height="160dp"
             android:background="@color/kitchen_header_bg"
             android:gravity="center"
             android:orientation="horizontal"
@@ -251,7 +251,7 @@
                 android:id="@+id/bloemfonteinLogo"
                 android:layout_width="wrap_content"
                 android:layout_height="100dp"
-                android:layout_marginHorizontal="24dp"
+                android:layout_marginHorizontal="16dp"
                 android:adjustViewBounds="true"
                 android:scaleType="fitCenter"
                 android:src="@drawable/bloemfontein_logo" />
@@ -260,6 +260,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:gravity="center"
                 android:orientation="vertical">
 
                 <TextView
@@ -267,81 +268,90 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/gotham"
+                    android:gravity="center"
+                    android:maxLines="2"
                     android:textColor="@color/white"
-                    android:textSize="24sp"
+                    android:textSize="28sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:gravity="end"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/changeSchoolButton"
+                        android:layout_width="148dp"
+                        android:layout_height="40dp"
+                        android:backgroundTint="@color/button_secondary_bg"
+                        android:fontFamily="@font/gotham"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="40dp"
+                        android:minWidth="0dp"
+                        android:paddingHorizontal="12dp"
+                        android:text="@string/change_school_with_icon"
+                        android:textAllCaps="true"
+                        android:textColor="@color/button_secondary_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="6dp"
+                        app:strokeColor="@color/button_secondary_border"
+                        app:strokeWidth="1dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/endServiceButton"
+                        android:layout_width="148dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="8dp"
+                        android:backgroundTint="#FFFFFF"
+                        android:fontFamily="@font/gotham"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="40dp"
+                        android:minWidth="0dp"
+                        android:paddingHorizontal="12dp"
+                        android:text="@string/end_service_with_icon"
+                        android:textAllCaps="true"
+                        android:textColor="#B71C1C"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="6dp"
+                        app:icon="@android:drawable/presence_busy"
+                        app:iconGravity="textStart"
+                        app:iconPadding="6dp"
+                        app:iconTint="#D32F2F"
+                        app:strokeColor="#E0B4B4"
+                        app:strokeWidth="1dp" />
+                </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/backToSetupButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:id="@+id/pauseServiceHeaderButton"
                     android:layout_width="148dp"
                     android:layout_height="40dp"
+                    android:layout_marginTop="8dp"
                     android:backgroundTint="@color/button_secondary_bg"
                     android:fontFamily="@font/gotham"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="40dp"
-                    android:text="@string/back_to_setup"
+                    android:text="@string/pause_service_button_with_icon"
                     android:textAllCaps="true"
                     android:textColor="@color/button_secondary_text"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     app:cornerRadius="6dp"
                     app:strokeColor="@color/button_secondary_border"
-                    app:strokeWidth="1dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/changeSchoolButton"
-                    android:layout_width="148dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:backgroundTint="@color/button_secondary_bg"
-                    android:fontFamily="@font/gotham"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minHeight="40dp"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="12dp"
-                    android:text="@string/change_school_with_icon"
-                    android:textAllCaps="true"
-                    android:textColor="@color/button_secondary_text"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    app:cornerRadius="6dp"
-                    app:strokeColor="@color/button_secondary_border"
-                    app:strokeWidth="1dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/endServiceButton"
-                    android:layout_width="148dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:backgroundTint="#FFFFFF"
-                    android:fontFamily="@font/gotham"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minHeight="40dp"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="12dp"
-                    android:text="@string/end_service_with_icon"
-                    android:textAllCaps="true"
-                    android:textColor="#B71C1C"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    app:cornerRadius="6dp"
-                    app:icon="@android:drawable/presence_busy"
-                    app:iconGravity="textStart"
-                    app:iconPadding="6dp"
-                    app:iconTint="#D32F2F"
-                    app:strokeColor="#E0B4B4"
-                    app:strokeWidth="1dp" />
+                    app:strokeWidth="1dp"
+                    android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
 
@@ -462,27 +472,7 @@
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/pauseServiceButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="72dp"
-                        android:layout_marginTop="10dp"
-                        android:backgroundTint="@color/button_secondary_bg"
-                        android:fontFamily="@font/gotham"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:stateListAnimator="@null"
-                        android:text="@string/pause_service_button_with_icon"
-                        android:textAllCaps="true"
-                        android:textColor="@color/button_secondary_text"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        app:cornerRadius="6dp"
-                        app:elevation="0dp"
-                        app:pressedTranslationZ="0dp"
-                        app:strokeColor="@color/button_secondary_border"
-                        app:strokeWidth="1dp"
-                        android:visibility="gone" />
+
 
                     <TextView
                         android:id="@+id/serviceStatusText"

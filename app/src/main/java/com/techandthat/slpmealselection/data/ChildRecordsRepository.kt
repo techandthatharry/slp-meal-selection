@@ -202,4 +202,20 @@ class ChildRecordsRepository(
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener(onFailure)
     }
+
+    // Logs error details into a central 'errorLog' collection in Firestore.
+    fun logErrorToFirebase(context: String, error: Throwable, schoolName: String?) {
+        val errorData = mapOf(
+            "context" to context,
+            "schoolName" to (schoolName ?: "unknown"),
+            "message" to (error.message ?: "no message"),
+            "stackTrace" to error.stackTraceToString(),
+            "timestamp" to FieldValue.serverTimestamp()
+        )
+        firestore.collection("errorLog")
+            .add(errorData)
+            .addOnFailureListener {
+                // Fail silently if even error logging fails
+            }
+    }
 }

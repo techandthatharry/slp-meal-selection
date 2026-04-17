@@ -8,24 +8,34 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Extension functions managing Arbor billing queue upload and end-of-service cleanup.
+/**
+ * Extension functions for MainActivity that manage the end-of-service workflow.
+ * This includes uploading the billing queue to Arbor via Firebase Functions,
+ * clearing the local and remote child records, and generating summary statistics.
+ */
 
-// Begins end-service flow: shows uploading state then triggers billing upload callable.
+// Begins the process of ending the day's service and uploading records to Arbor.
 internal fun MainActivity.endServiceAndDeleteRecords() {
     isLoadingMeals = true
     firebaseStatusMessage = null
     binding.prepLoadingText.text = getString(R.string.uploading_to_arbor)
+    
+    // Refresh the UI to show the loading state.
     renderKitchenView()
+    
+    // Initiate the authenticated upload process.
     ensureAuthenticatedThenUploadBillingQueue(retryOnUnauthenticated = true)
 }
 
-// Verifies auth token exists before invoking billing queue upload callable.
+// Ensures a valid Firebase Auth session is active before calling the billing upload function.
 internal fun MainActivity.ensureAuthenticatedThenUploadBillingQueue(retryOnUnauthenticated: Boolean) {
     authManager.ensureFreshAuth(
         onReady = {
+            // Auth is valid, proceed to call the cloud function.
             runBillingUploadCallable(retryOnUnauthenticated)
         },
         onFailure = { error ->
+            // Auth failed; stop loading and display the error message.
             isLoadingMeals = false
             val failureMessage = getString(
                 R.string.firebase_auth_failed_with_reason,
@@ -39,11 +49,12 @@ internal fun MainActivity.ensureAuthenticatedThenUploadBillingQueue(retryOnUnaut
     )
 }
 
-// Calls uploadArborBillingQueue and only ends service when upload succeeds fully.
+// Executes the HttpsCallable to sync local meal selection data to the Arbor MIS.
 internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boolean) {
     arborSyncService.uploadBillingQueue(
         schoolName = selectedSchool,
         onSuccess = { data ->
+            // Parse response data from the Firebase Cloud Function.
             val success = data?.get("success") as? Boolean ?: false
             val uploaded = (data?.get("uploaded") as? Number)?.toInt() ?: 0
             val deleted = (data?.get("deleted") as? Number)?.toInt() ?: 0
@@ -58,9 +69,14 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                 "Upload result success=$success uploaded=$uploaded deleted=$deleted failed=$failed message=$message"
             )
 
+            // Handle partial or total failures from the Arbor API side.
             if (!success) {
-                // Log the error and proceed to end service state for debugging
                 Log.e("ArborBillingUpload", "Upload failed but force ending service for UI feedback. Error: $message")
+                repository.logErrorToFirebase(
+                    "ArborBillingUpload", 
+                    Exception("Upload result success=false. message=$message backendError=$backendError firstFailureReason=$firstFailureReason"), 
+                    selectedSchool
+                )
                 
                 val arborFailureText = firstFailureReason?.takeIf { it.isNotBlank() }?.let { reason ->
                     val codeSuffix = firstFailureStatusCode?.let { " (HTTP $it)" }.orEmpty()
@@ -79,6 +95,7 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
             
             renderKitchenView()
 
+            // Calculate final statistics for the session summary dashboard.
             val mealsServedCount = simulatedDatabase.count { it.served }
             val mealVolumesMap = simulatedDatabase.filter { it.served }.groupingBy { it.meal }.eachCount()
             val loadedTime = mealsLoadedTime ?: System.currentTimeMillis()
@@ -99,6 +116,7 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                 monthTotal = 684 // Simulated realistic month total
             )
 
+            // Clear the Firestore collection for the school after a successful (or soft-failed) sync.
             repository.deleteAllRecords(
                 schoolName = selectedSchool,
                 onSuccess = {
@@ -114,6 +132,8 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                     childScreen = ChildScreen.IDLE
                     isLoadingMeals = false
                     firebaseStatusMessage = null
+                    
+                    // Switch UI to the summary statistics dashboard.
                     renderAppContent()
                     Toast.makeText(
                         this,
@@ -135,10 +155,12 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
             )
         },
         onFailure = { error ->
+            // Handle network or cloud function infrastructure errors.
             val functionsException = error as? FirebaseFunctionsException
             val isUnauthenticated =
                 functionsException?.code == FirebaseFunctionsException.Code.UNAUTHENTICATED
 
+            // Retry once if the token expired during the request.
             if (retryOnUnauthenticated && isUnauthenticated) {
                 Log.w(
                     "ArborBillingUpload",
@@ -151,6 +173,7 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
 
             isLoadingMeals = false
             val codeText = functionsException?.code?.name ?: "UNKNOWN"
+            repository.logErrorToFirebase("ArborBillingUpload", error, selectedSchool)
             firebaseStatusMessage = "Failed to upload billing queue to Arbor sandbox ($codeText)"
             Log.e("ArborBillingUpload", "Callable failed code=$codeText", error)
             Toast.makeText(

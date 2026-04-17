@@ -23,7 +23,7 @@
     <string name="child_tablet_mode">Child tablet mode</string>
     <string name="kitchen_dashboard_title">Meal Preparation Dashboard</string>
     <string name="todays_service_stats_title">Today\'s Service Stats</string>
-    <string name="stats_today">Today</string>
+    <string name="stats_today">meals served today</string>
     <string name="stats_week">This Week</string>
     <string name="stats_month">This Month</string>
     <string name="stats_arbor_sync">Arbor Sync</string>
