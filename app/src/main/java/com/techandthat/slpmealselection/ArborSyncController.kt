@@ -1,29 +1,69 @@
 package com.techandthat.slpmealselection
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.techandthat.slpmealselection.network.ArborPayloadMapper
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 // Extension functions managing Arbor student sync, paged batching, and auth handling.
 
-// Starts Arbor sync flow and resets progress state before invoking the callable.
-internal fun MainActivity.fetchStudentsFromArbor() {
+// Loads student records from Firebase cache if they exist, otherwise syncs from Arbor.
+// forceSync=true skips the cache check and always re-syncs from Arbor.
+internal fun MainActivity.fetchStudentsFromArbor(forceSync: Boolean = false) {
     isLoadingMeals = true
     firebaseStatusMessage = null
     syncProgressCurrent = 0
     syncProgressTotal = 0
     renderKitchenView()
-    ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
+
+    if (forceSync) {
+        // User explicitly requested a fresh pull from Arbor.
+        ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
+        return
+    }
+
+    // Check Firebase cache first — instant load if data already exists.
+    repository.hasRecordsForSchool(
+        schoolName = selectedSchool,
+        onResult = { hasRecords ->
+            if (hasRecords) {
+                // Records are in Firebase — load immediately, no Arbor sync needed.
+                firebaseStatusMessage = null
+                loadChildRecordsFromFirestore()
+                isLoadingMeals = false
+                renderKitchenView()
+                // Background: sync today's Arbor meal choices to update mealSelected.
+                runMealChoicesSync(silent = true)
+            } else {
+                // No local data — trigger full Arbor sync.
+                firebaseStatusMessage = getString(R.string.loading_todays_meals)
+                renderKitchenView()
+                ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
+            }
+        },
+        onFailure = {
+            // On cache check failure, fall through to Arbor sync.
+            ensureAuthenticatedThenSync(retryOnUnauthenticated = true)
+        }
+    )
 }
 
 // Verifies a fresh auth token exists prior to invoking the callable sync.
-@Suppress("UNUSED_PARAMETER")
 internal fun MainActivity.ensureAuthenticatedThenSync(retryOnUnauthenticated: Boolean) {
     authManager.ensureFreshAuth(
         onReady = {
-            // Build class map first; student sync starts only after map is complete.
-            runClassMapBuild(formOffset = 0, totalForms = null)
+            runArborSyncCallable(
+                retryOnUnauthenticated = retryOnUnauthenticated,
+                offset = 0,
+                totalWritten = 0,
+                knownTotal = null
+            )
         },
         onFailure = { error ->
             val failureMessage = getString(
@@ -132,19 +172,34 @@ internal fun MainActivity.runArborSyncCallable(
                     syncProgressTotal = progressTotal
 
                     if (hasMore) {
-                        val statusText = if (rateLimited) {
-                            "Arbor rate limited. Retrying from $nextOffset/$progressTotal..."
+                        if (rateLimited) {
+                            // Arbor rate-limited us mid-batch. The callable stopped
+                            // immediately (no internal sleep) so we are safe here.
+                            // Wait 65s on the Android side before resuming.
+                            val waitMs = 65_000L
+                            firebaseStatusMessage =
+                                "Rate limited — resuming in 65s " +
+                                "($newTotalWritten/$progressTotal synced)…"
+                            renderKitchenView()
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                firebaseStatusMessage = null
+                                runArborSyncCallable(
+                                    retryOnUnauthenticated = retryOnUnauthenticated,
+                                    offset = nextOffset,
+                                    totalWritten = newTotalWritten,
+                                    knownTotal = totalAvailable
+                                )
+                            }, waitMs)
                         } else {
-                            null
+                            firebaseStatusMessage = null
+                            renderKitchenView()
+                            runArborSyncCallable(
+                                retryOnUnauthenticated = retryOnUnauthenticated,
+                                offset = nextOffset,
+                                totalWritten = newTotalWritten,
+                                knownTotal = totalAvailable
+                            )
                         }
-                        firebaseStatusMessage = statusText
-                        renderKitchenView()
-                        runArborSyncCallable(
-                            retryOnUnauthenticated = retryOnUnauthenticated,
-                            offset = nextOffset,
-                            totalWritten = newTotalWritten,
-                            knownTotal = totalAvailable
-                        )
                         return@upsertArborRecords
                     }
 
@@ -157,6 +212,8 @@ internal fun MainActivity.runArborSyncCallable(
                         "Arbor sync complete: $newTotalWritten/$progressTotal students synced",
                         Toast.LENGTH_LONG
                     ).show()
+                    // Also sync today's meal choices from Arbor (background).
+                    runMealChoicesSync(silent = false)
                 },
                 onFailure = { error ->
                     Log.e("ArborIntegration", "Client-side Firestore upsert failed", error)
@@ -184,6 +241,40 @@ internal fun MainActivity.runArborSyncCallable(
             renderKitchenView()
             Log.e("ArborIntegration", "Failed to fetch students", exception)
             Toast.makeText(this, "Failed to sync students from Arbor", Toast.LENGTH_LONG).show()
+        }
+    )
+}
+
+// Returns today's date as YYYY-MM-DD in Europe/London timezone.
+private fun todayLondonDate(): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.UK)
+    sdf.timeZone = TimeZone.getTimeZone("Europe/London")
+    return sdf.format(Date())
+}
+
+// Calls syncTodaysMealChoices (single GraphQL call) to update mealSelected.
+// When silent=true, completes without toasts (background refresh after cache hit).
+internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
+    arborSyncService.syncMealChoices(
+        schoolName = selectedSchool,
+        targetDate = todayLondonDate(),
+        onSuccess = { data ->
+            val updated = (data?.get("updated") as? Number)?.toInt() ?: 0
+            Log.d("MealChoicesSync", "Sync complete: updated=$updated")
+            // Reload from Firestore so fresh meal choices appear in the UI.
+            loadChildRecordsFromFirestore()
+            renderKitchenView()
+            if (!silent && updated > 0) {
+                Toast.makeText(
+                    this,
+                    "Meal choices updated: $updated students",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        },
+        onFailure = { error ->
+            // Non-fatal — student roster still shows, meal choice column will be blank.
+            Log.w("MealChoicesSync", "Meal choices sync failed (non-fatal)", error)
         }
     )
 }

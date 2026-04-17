@@ -122,11 +122,17 @@ fun renderNameSelectionStep(
     val primaryColor = ContextCompat.getColor(context, R.color.kitchen_success)
     val primaryTextColor = ContextCompat.getColor(context, R.color.white)
 
-    // Create one full-width button per child.
+    // Create one full-width button per child, showing name + pre-selected meal.
     children.forEach { child ->
+        val mealText = child.meal.takeIf {
+            it.isNotBlank() && it != "Not selected"
+        }
+        val icon = if (mealText != null) mealIconFor(mealText) else ""
+        val label = if (mealText != null) "${child.name}  $icon $mealText" else child.name
+
         val button = MaterialButton(context).apply {
-            text = child.name
-            textSize = 34f
+            text = label
+            textSize = 30f
             isAllCaps = false
             typeface = gothamTypeface
             backgroundTintList = ColorStateList.valueOf(primaryColor)

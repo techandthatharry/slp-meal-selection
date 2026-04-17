@@ -31,7 +31,8 @@ class MainActivity : ComponentActivity() {
         "St Peter's Primary"
     )
     // 50 students × 750ms/request ≈ 37.5s per batch — comfortably within the 90s callable timeout.
-    internal val arborSyncBatchSize = 50
+    // 100 students × 200ms/request ≈ 20s per batch — within 90s callable timeout.
+    internal val arborSyncBatchSize = 100
 
     internal val initialDummyData = listOf(
         MealEntry("Liam Smith", "Reception", "Tomato Pasta"),

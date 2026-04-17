@@ -21,6 +21,20 @@ class ChildRecordsRepository(
         val served: Boolean
     )
 
+    // Checks whether any childRecords exist for the given school (fast limit-1 query).
+    fun hasRecordsForSchool(
+        schoolName: String,
+        onResult: (Boolean) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        childRecordsCollection
+            .whereEqualTo("schoolName", schoolName)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { snapshot -> onResult(!snapshot.isEmpty) }
+            .addOnFailureListener(onFailure)
+    }
+
     // Reads childRecords from Firestore filtered to the given school.
     fun loadRecords(
         schoolName: String,
