@@ -10,9 +10,13 @@ import com.techandthat.slpmealselection.R
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import com.techandthat.slpmealselection.model.MealEntry
 
-// Renders child-tablet class/name/success selection steps.
+/**
+ * UI components for the "Child-Facing Tablet" mode.
+ * Dynamically builds the step-by-step selection screens for students using a
+ * button-based navigation flow optimized for large touchscreens.
+ */
 
-// Builds class selection buttons from outstanding meal records.
+// Dynamically populates the "Class Selection" screen with buttons for each registration group.
 fun renderClassSelectionStep(
     context: Context,
     binding: ActivityMainBinding,
@@ -20,22 +24,23 @@ fun renderClassSelectionStep(
     showWaitingOverlayAfterConfirm: Boolean,
     onClassSelected: (String) -> Unit
 ) {
+    // Toggle container visibilities to show the class selection step.
     binding.classSelectionContainer.visibility = android.view.View.VISIBLE
     binding.nameSelectionContainer.visibility = android.view.View.GONE
     binding.checkInSuccessContainer.visibility = android.view.View.GONE
 
-    // Ensure inner child-step scroll view can scroll within parent NestedScrollView.
+    // Ensure nested scrolling is enabled for the dynamic list.
     androidx.core.view.ViewCompat.setNestedScrollingEnabled(binding.classSelectionContainer, true)
 
-    // Extract unique classes that still have unserved meals.
+    // Filter the master list for unique classes that have at least one unserved student.
     val classes = simulatedDatabase.filterNot { it.served }.map { it.clazz }.distinct().sorted()
 
-    // Resolve visible container height to size generated buttons.
+    // Calculate dynamic button heights to fill the screen appropriately.
     val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.classSelectionContainer.measuredHeight.takeIf { it > 0 }
 
-    // Retry after layout pass if height is not available yet.
+    // If layout hasn't completed yet, defer rendering until the next frame.
     if (containerHeight == null) {
         binding.classSelectionContainer.post {
             renderClassSelectionStep(
@@ -49,16 +54,18 @@ fun renderClassSelectionStep(
         return
     }
 
+    // Clear existing buttons and rebuild the list.
     binding.classButtonsContainer.removeAllViews()
     val classButtonHeight = containerHeight / 4
 
+    // Apply branding and styling to the generated buttons.
     val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
     val density = context.resources.displayMetrics.density
     val cornerRadiusPx = (6 * density).toInt()
     val primaryColor = ContextCompat.getColor(context, R.color.kitchen_success)
     val primaryTextColor = ContextCompat.getColor(context, R.color.white)
 
-    // Create one full-width button per class.
+    // Add a button for each unique class found.
     classes.forEach { className ->
         val button = MaterialButton(context).apply {
             text = className
@@ -76,6 +83,7 @@ fun renderClassSelectionStep(
                 topMargin = 12
             }
             setOnClickListener {
+                // Prevent multiple clicks if an overlay is about to show.
                 if (!showWaitingOverlayAfterConfirm) {
                     onClassSelected(className)
                 }
@@ -85,7 +93,7 @@ fun renderClassSelectionStep(
     }
 }
 
-// Builds name selection buttons for children in the selected class.
+// Dynamically populates the "Name Selection" screen with buttons for students in the selected class.
 fun renderNameSelectionStep(
     context: Context,
     binding: ActivityMainBinding,
@@ -96,26 +104,27 @@ fun renderNameSelectionStep(
     onMissingClass: () -> Unit,
     onChildSelected: (MealEntry) -> Unit
 ) {
+    // Toggle container visibilities to show the name selection step.
     binding.classSelectionContainer.visibility = android.view.View.GONE
     binding.nameSelectionContainer.visibility = android.view.View.VISIBLE
     binding.checkInSuccessContainer.visibility = android.view.View.GONE
     binding.backToClassesButton.visibility = android.view.View.VISIBLE
 
-    // Ensure inner name-list scroll view can scroll within parent NestedScrollView.
+    // Ensure scrolling is enabled for the dynamic name list.
     androidx.core.view.ViewCompat.setNestedScrollingEnabled(binding.nameListScroll, true)
 
     binding.nameButtonsContainer.removeAllViews()
 
-    // If class context is missing, return to class step.
+    // Safety check: if no class is selected, revert to the previous step.
     if (selectedClass.isNullOrBlank()) {
         onMissingClass()
         return
     }
 
-    // Filter to children who still need meal check-in.
+    // Filter to find unserved students within the selected class.
     val children = simulatedDatabase.filter { !it.served && it.clazz == selectedClass }
 
-    // Resolve available height for dynamic name button sizing.
+    // Calculate dynamic heights for touch-friendly buttons.
     val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.nameSelectionContainer.measuredHeight.takeIf { it > 0 }
@@ -128,7 +137,7 @@ fun renderNameSelectionStep(
     val primaryColor = ContextCompat.getColor(context, R.color.kitchen_success)
     val primaryTextColor = ContextCompat.getColor(context, R.color.white)
 
-    // Create one full-width button per child, showing name + pre-selected meal.
+    // Add a button for each student, displaying their name and chosen meal if available.
     children.forEach { child ->
         val mealText = child.meal.takeIf {
             it.isNotBlank() && it != "Not selected"
@@ -152,6 +161,7 @@ fun renderNameSelectionStep(
                 topMargin = 12
             }
             setOnClickListener {
+                // Trigger the "Active Order" state for the kitchen.
                 if (activeOrder == null && !showWaitingOverlayAfterConfirm) {
                     onChildSelected(child)
                 }
@@ -161,7 +171,7 @@ fun renderNameSelectionStep(
     }
 }
 
-// Resolves a meal icon based on meal name keywords.
+// Maps meal names to appropriate emojis to aid visual recognition for younger students.
 private fun mealIconFor(mealName: String): String {
     val normalized = mealName.lowercase()
     return when {
@@ -178,13 +188,13 @@ private fun mealIconFor(mealName: String): String {
     }
 }
 
-// Shows final success state after a child check-in is confirmed.
+// Renders the final "Selection Success" screen with a confirmation of the chosen meal.
 fun renderSuccessStep(binding: ActivityMainBinding, activeOrder: MealEntry?) {
     binding.classSelectionContainer.visibility = android.view.View.GONE
     binding.nameSelectionContainer.visibility = android.view.View.GONE
     binding.checkInSuccessContainer.visibility = android.view.View.VISIBLE
 
-    // Show expected meal and matching icon on the large green confirmation button.
+    // Display the meal name and icon on the final "Confirm" button.
     val mealLabel = activeOrder?.meal?.takeIf { it.isNotBlank() } ?: "Meal"
     val icon = mealIconFor(mealLabel)
     binding.checkInSuccessButton.text =

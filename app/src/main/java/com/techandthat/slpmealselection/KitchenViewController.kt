@@ -6,9 +6,13 @@ import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import com.techandthat.slpmealselection.ui.MealPrepUi
 
-// Extension functions for rendering and styling the kitchen dashboard.
+/**
+ * Controller extension for MainActivity that manages the "Kitchen-Facing Tablet" mode.
+ * Handles the rendering of the meal preparation dashboard, service controls,
+ * real-time order notifications, and post-service statistics.
+ */
 
-// Applies solid-fill primary button style (blue background, white text, no stroke).
+// Applies a consistent solid-fill primary button style used for "Success" or "Action" triggers.
 internal fun MainActivity.applyPrimaryButtonStyle(button: MaterialButton) {
     button.backgroundTintList = ColorStateList.valueOf(
         ContextCompat.getColor(this, R.color.kitchen_success)
@@ -19,7 +23,7 @@ internal fun MainActivity.applyPrimaryButtonStyle(button: MaterialButton) {
     button.alpha = 1f
 }
 
-// Applies outlined secondary button style (white background, grey border, grey text).
+// Applies a consistent outlined secondary button style used for "Secondary" or "Settings" triggers.
 internal fun MainActivity.applySecondaryButtonStyle(button: MaterialButton) {
     button.backgroundTintList = ColorStateList.valueOf(
         ContextCompat.getColor(this, R.color.button_secondary_bg)
@@ -35,16 +39,19 @@ internal fun MainActivity.applySecondaryButtonStyle(button: MaterialButton) {
     button.alpha = 1f
 }
 
-// Renders kitchen dashboard state, button availability, and prep summary.
+// Main rendering engine for the kitchen dashboard UI.
 internal fun MainActivity.renderKitchenView() {
+    // Update header branding for the kitchen environment.
     binding.headerBar.setBackgroundColor(ContextCompat.getColor(this, R.color.kitchen_header_bg))
 
+    // Determine state based on whether student check-in has occurred.
     val hasCheckInStarted = activeOrder != null || simulatedDatabase.any { it.served }
     val shouldHideLoadAndStart = serviceStarted
     val outstandingMeals = simulatedDatabase.filterNot { it.served }
     val volumes = outstandingMeals.groupingBy { it.meal }.eachCount()
     val hasPrepData = outstandingMeals.isNotEmpty()
 
+    // Dynamically update the header title based on current workflow stage.
     binding.headerTitle.text = when {
         serviceStarted && hasCheckInStarted -> getString(R.string.header_service_ongoing)
         serviceStarted -> getString(R.string.header_service_ongoing)
@@ -54,19 +61,22 @@ internal fun MainActivity.renderKitchenView() {
     binding.headerLogo.visibility = View.VISIBLE
     binding.bloemfonteinLogo.visibility = View.VISIBLE
 
+    // Delegate to stats view if service has ended and user is viewing the summary.
     if (showingServiceStats) {
         renderServiceStatsView()
         return
     }
 
+    // Set content titles for the preparation phase.
     binding.contentTitle.text = if (serviceStarted) "SERVICE IN PROGRESS" else getString(R.string.kitchen_dashboard_title)
     binding.contentSubtitle.visibility = View.GONE
 
+    // Toggle container visibilities for the kitchen dashboard.
     binding.kitchenContent.visibility = View.VISIBLE
     binding.serviceEndedContent.visibility = View.GONE
     binding.childContent.visibility = View.GONE
 
-    // Update service status messaging and prep card title.
+    // Update the visual status indicator (Live/Paused/Ready).
     val statusText = when {
         serviceStarted && servicePausedByKitchen -> getString(R.string.service_status_paused)
         serviceStarted -> getString(R.string.service_status_started)
@@ -75,11 +85,14 @@ internal fun MainActivity.renderKitchenView() {
     }
     binding.serviceStatusText.text = statusText
     binding.serviceStatusText.visibility = if (statusText.isBlank()) View.GONE else View.VISIBLE
+    
+    // Switch label depending on whether we are in "Prep Mode" or "Serving Mode".
     binding.prepListTitle.text = if (serviceStarted) {
         getString(R.string.meals_to_be_served)
     } else {
         getString(R.string.meals_to_prepare)
     }
+    
     binding.serviceStatusText.setTextColor(
         ContextCompat.getColor(
             this,
@@ -91,6 +104,7 @@ internal fun MainActivity.renderKitchenView() {
         )
     )
 
+    // Manage visibility and interactivity of service control buttons.
     binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
     binding.loadTodaysMealsButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
     binding.pauseServiceHeaderButton.visibility = if (serviceStarted) View.VISIBLE else View.GONE
@@ -117,7 +131,7 @@ internal fun MainActivity.renderKitchenView() {
     }
     binding.loadTodaysMealsButton.text = getString(R.string.load_todays_meals)
 
-    // Show brief loading indicator while checking Firebase cache.
+    // Handle loading state overlays for network operations.
     if (isLoadingMeals) {
         binding.prepLoadingText.visibility = View.VISIBLE
         binding.prepLoadingProgress.visibility = View.VISIBLE
@@ -127,11 +141,13 @@ internal fun MainActivity.renderKitchenView() {
         binding.prepLoadingProgress.visibility = View.GONE
     }
 
+    // Secondary navigation buttons for resetting the app or ending the day.
     binding.changeSchoolButton.visibility = View.VISIBLE
     binding.endServiceButton.visibility = View.VISIBLE
     binding.changeSchoolButton.isEnabled = !serviceStarted
     binding.endServiceButton.isEnabled = serviceStarted || simulatedDatabase.isNotEmpty() || activeOrder != null
 
+    // Display Firestore/Arbor status messages (errors or sync progress).
     if (firebaseStatusMessage.isNullOrBlank() || isLoadingMeals) {
         binding.firebaseStatusText.visibility = View.GONE
     } else {
@@ -139,13 +155,16 @@ internal fun MainActivity.renderKitchenView() {
         binding.firebaseStatusText.visibility = View.VISIBLE
     }
 
+    // Render the meal preparation summary list (e.g., "5x Meat, 3x Veg").
     MealPrepUi.renderMealPrepRows(this, binding, volumes)
 
+    // Render the "Active Order" card when a student has selected their meal on the child tablet.
     if (serviceStarted && activeOrder != null) {
         binding.kitchenOrderContainer.visibility = View.VISIBLE
         binding.kitchenOrderChildName.text = activeOrder?.name
         binding.kitchenOrderMealName.text = activeOrder?.meal
 
+        // Format dietary requirements into a bulleted string, highlighting them in red if present.
         val dietaryText = activeOrder
             ?.dietaryRequirements
             ?.filter {
@@ -167,7 +186,7 @@ internal fun MainActivity.renderKitchenView() {
         binding.kitchenOrderDietaryRequirements.visibility = View.GONE
     }
 
-    // Handle Service Stats Card
+    // Render a mini summary card if statistics from the previous session are available.
     val stats = latestServiceStats
     if (stats != null && !serviceStarted && simulatedDatabase.isEmpty()) {
         binding.serviceStatsCard.visibility = View.VISIBLE
@@ -175,12 +194,11 @@ internal fun MainActivity.renderKitchenView() {
         binding.serviceStatsLine2.text = getString(R.string.stats_students_loaded, stats.studentsLoaded)
         binding.serviceStatsLine3.text = "Meals loaded at: ${stats.mealsLoadedTimeLabel}"
         binding.serviceStatsLine4.text = "Prep time: ${stats.prepDurationMinutes} mins"
-        // TODO: Render pie chart/volumes here
     } else {
         binding.serviceStatsCard.visibility = View.GONE
     }
 
-    // Reorder major kitchen sections based on whether check-in has begun.
+    // Re-order layout sections dynamically so the "Active Order" appears at the top when live.
     if (hasCheckInStarted) {
         binding.kitchenContent.removeView(binding.kitchenOrderContainer)
         binding.kitchenContent.addView(binding.kitchenOrderContainer, 0)
@@ -193,9 +211,11 @@ internal fun MainActivity.renderKitchenView() {
         binding.kitchenContent.addView(binding.kitchenOrderContainer)
     }
 
+    // Ensure the view is scrolled to the top after re-rendering.
     binding.appScrollView.scrollTo(0, 0)
 }
 
+// Renders the full-screen "Service Statistics" dashboard after the kitchen syncs to Arbor.
 internal fun MainActivity.renderServiceStatsView() {
     binding.contentTitle.text = getString(R.string.todays_service_stats_title)
     binding.contentSubtitle.visibility = View.GONE
@@ -203,47 +223,50 @@ internal fun MainActivity.renderServiceStatsView() {
     binding.childContent.visibility = View.GONE
     binding.serviceEndedContent.visibility = View.VISIBLE
 
-    // Hide control buttons in stats view
+    // Hide dashboard-specific control buttons.
     binding.endServiceButton.visibility = View.GONE
     binding.changeSchoolButton.visibility = View.GONE
     binding.pauseServiceHeaderButton.visibility = View.GONE
 
     val stats = latestServiceStats
     if (stats != null) {
+        // Populate the 6 summary cards with session data.
         binding.statsTodayValue.text = stats.mealsServed.toString()
         
-        // Original stats
         binding.statsWeekValue.text = stats.weekTotal.toString()
         binding.statsWeekLabel.text = getString(R.string.stats_week)
         
         binding.statsMonthValue.text = stats.monthTotal.toString()
         binding.statsMonthLabel.text = getString(R.string.stats_month)
         
-        // New stats added to the new cards
         binding.statsLoadedAtValue.text = stats.mealsLoadedTimeLabel
         binding.statsPrepTimeValue.text = "${stats.prepDurationMinutes}m"
         
+        // Calculate Arbor synchronization success percentage.
         val syncPercent = if (stats.studentsLoaded > 0) {
             (stats.arborUploaded * 100) / stats.studentsLoaded
         } else 100
         binding.statsArborValue.text = getString(R.string.percent_format, syncPercent)
         
+        // Color-code the sync status (Red for failures, Green for success).
         if (syncPercent < 100) {
             binding.statsArborValue.setTextColor(ContextCompat.getColor(this, R.color.kitchen_danger))
         } else {
             binding.statsArborValue.setTextColor(ContextCompat.getColor(this, R.color.kitchen_success))
         }
 
-        // Render Meal Volumes (Simple Bar Chart instead of Pie Chart for better fit)
+        // Render the per-meal volume bars.
         renderMealVolumeBars(stats.mealVolumes)
     }
 
+    // Render the weekly trend graph.
     renderStatsGraph()
     binding.appScrollView.post {
         binding.appScrollView.scrollTo(0, 0)
     }
 }
 
+// Dynamically builds a horizontal bar chart showing how many of each meal were served.
 private fun MainActivity.renderMealVolumeBars(volumes: Map<String, Int>) {
     binding.mealVolumeGraphContainer.removeAllViews()
     if (volumes.isEmpty()) return
@@ -288,7 +311,7 @@ private fun MainActivity.renderMealVolumeBars(volumes: Map<String, Int>) {
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
             )
-            text = meal.take(5) // Shorten meal name
+            text = meal.take(5) // Truncate meal names for compact display.
             textSize = 9f
             gravity = android.view.Gravity.CENTER
             setTextColor(ContextCompat.getColor(this@renderMealVolumeBars, R.color.kitchen_text_secondary))
@@ -303,9 +326,11 @@ private fun MainActivity.renderMealVolumeBars(volumes: Map<String, Int>) {
     }
 }
 
+// Dynamically builds the weekly performance graph at the bottom of the summary dashboard.
 internal fun MainActivity.renderStatsGraph() {
     binding.statsGraphContainer.removeAllViews()
-    // Using a more realistic spread of mock data
+    
+    // Provide a mix of mock data for history and real data for today.
     val dailyCounts = listOf(42, 38, 45, 41, 39, 0, latestServiceStats?.mealsServed ?: 0)
     val maxCount = dailyCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
     val density = resources.displayMetrics.density
@@ -317,7 +342,7 @@ internal fun MainActivity.renderStatsGraph() {
             gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
         }
 
-        // Add value label above bar if count > 0
+        // Add numerical value label above each bar.
         if (count > 0) {
             val valueLabel = android.widget.TextView(this).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(
@@ -333,7 +358,7 @@ internal fun MainActivity.renderStatsGraph() {
         }
 
         val bar = android.view.View(this).apply {
-            // Max height is 120dp to leave room for labels
+            // Calculate proportional height based on the week's maximum.
             val barHeightDp = (count.toFloat() / maxCount * 120).coerceAtLeast(4f)
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 resources.getDimensionPixelSize(R.dimen.stats_bar_width),
@@ -343,6 +368,8 @@ internal fun MainActivity.renderStatsGraph() {
                 bottomMargin = (4 * density).toInt()
             }
             background = ContextCompat.getDrawable(this@renderStatsGraph, R.drawable.stats_bar_bg)
+            
+            // Highlight today's bar in SLP Blue, history in grey.
             backgroundTintList = android.content.res.ColorStateList.valueOf(
                 if (index == dailyCounts.size - 1) ContextCompat.getColor(this@renderStatsGraph, R.color.slp_blue)
                 else ContextCompat.getColor(this@renderStatsGraph, R.color.button_secondary_border)

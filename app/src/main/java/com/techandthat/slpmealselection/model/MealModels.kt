@@ -1,28 +1,31 @@
 package com.techandthat.slpmealselection.model
 
-// Defines shared UI/domain models used by kitchen and child tablet flows.
+/**
+ * Shared domain models used across the application to represent application state
+ * and student meal information.
+ */
 
-// Identifies whether the tablet is currently running in kitchen or child mode.
+// Enumerates the different operational modes of the tablet application.
 enum class TabletType {
-    KITCHEN,
-    CHILD
+    KITCHEN, // Dashboard for kitchen staff to prepare and serve meals.
+    CHILD    // Step-by-step UI for students to select their names.
 }
 
-// Tracks which step of the child-facing check-in flow is currently active.
+// Enumerates the UI states within the child tablet selection flow.
 enum class ChildScreen {
-    IDLE,
-    CLASS_SELECTION,
-    NAME_SELECTION,
-    SUCCESS
+    IDLE,            // Waiting for a student to approach.
+    CLASS_SELECTION, // Student chooses their registration group/class.
+    NAME_SELECTION,  // Student chooses their name from the class list.
+    SUCCESS          // Confirmation that the selection was received.
 }
 
-// Represents one child meal record, metadata, and whether the meal has been served.
+// Represents a single meal selection for a student, including their name, class, and requirements.
 data class MealEntry(
     val name: String,
     val clazz: String,
     val meal: String,
     val documentId: String? = null,
     val schoolName: String? = null,
-    val dietaryRequirements: List<String> = emptyList(),
-    var served: Boolean = false
+    val dietaryRequirements: List<String> = emptyList(), // e.g., ["Nut Allergy", "Dairy Free"]
+    var served: Boolean = false                         // True if the kitchen has marked this plate as delivered.
 )

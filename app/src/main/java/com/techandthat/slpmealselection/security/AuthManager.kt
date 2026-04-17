@@ -2,19 +2,22 @@ package com.techandthat.slpmealselection.security
 
 import com.google.firebase.auth.FirebaseAuth
 
-// Handles Firebase Authentication responsibilities for the app.
+/**
+ * Manager responsible for Firebase Authentication.
+ * Handles user sessions and token lifecycle to ensure secure communication with backend services.
+ */
 class AuthManager(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
-    // Checks whether an authenticated Firebase user already exists in session.
+    // Determines if a Firebase session is currently active.
     fun currentUserExists(): Boolean = firebaseAuth.currentUser != null
 
-    // Clears the current Firebase auth session.
+    // Ends the current authentication session.
     fun signOut() {
         firebaseAuth.signOut()
     }
 
-    // Signs in anonymously so callable functions can run with an auth context.
+    // Authenticates the tablet anonymously, meeting Firestore security requirements.
     fun signInAnonymously(
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
@@ -24,23 +27,24 @@ class AuthManager(
             .addOnFailureListener(onFailure)
     }
 
-    // Ensures a valid current token exists before protected backend calls.
+    // Ensures the app has a valid, non-expired authentication token before critical API calls.
     fun ensureFreshAuth(
         onReady: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
         val currentUser = firebaseAuth.currentUser
 
-        // If no user exists, create one anonymously first.
+        // If no user is logged in, attempt an anonymous sign-in first.
         if (currentUser == null) {
             signInAnonymously(onReady, onFailure)
             return
         }
 
-        // Force-refresh token and fallback to anonymous sign-in if refresh fails.
+        // Force-refresh the JWT token to avoid 401 Unauthenticated errors from Cloud Functions.
         currentUser.getIdToken(true)
             .addOnSuccessListener { onReady() }
             .addOnFailureListener {
+                // If refresh fails (e.g., account revoked), re-sign in.
                 signInAnonymously(onReady, onFailure)
             }
     }

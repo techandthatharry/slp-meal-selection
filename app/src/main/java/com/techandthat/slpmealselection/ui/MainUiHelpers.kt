@@ -10,9 +10,13 @@ import android.widget.ArrayAdapter
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import java.io.IOException
 
-// Provides shared setup and shell UI helpers used by MainActivity.
+/**
+ * Shared UI utility functions for the MainActivity.
+ * Handles system UI configuration, asset loading, splash screen transitions,
+ * and keyboard-aware layout adjustments.
+ */
 
-// Hides status/navigation bars for kiosk-like full-screen tablet experience.
+// configures the activity window for an immersive, kiosk-like full-screen experience.
 fun hideSystemUi(window: Window) {
     @Suppress("DEPRECATION")
     window.decorView.systemUiVisibility = (
@@ -22,7 +26,7 @@ fun hideSystemUi(window: Window) {
         )
 }
 
-// Populates the school spinner from the configured school list.
+// Configures the school selection spinner with the provided list of names.
 fun setupSchoolSpinner(
     context: Context,
     binding: ActivityMainBinding,
@@ -33,27 +37,28 @@ fun setupSchoolSpinner(
     binding.initialSchoolSpinner.adapter = adapter
 }
 
-// Decodes a bitmap from assets and returns null if the image cannot be loaded.
+// Loads and decodes a bitmap image from the application's assets folder.
 fun decodeAssetBitmap(assetManager: AssetManager, fileName: String) = try {
     assetManager.open(fileName).use { BitmapFactory.decodeStream(it) }
 } catch (_: IOException) {
+    // Return null if the asset is missing or corrupted.
     null
 }
 
-// Shows splash briefly and then transitions to setup screen.
+// Manages the transition from the branding splash screen to the initial setup screen.
 fun showSplashThenSetup(binding: ActivityMainBinding) {
     binding.splashContainer.visibility = View.VISIBLE
     binding.setupContainer.visibility = View.GONE
     binding.appContainer.visibility = View.GONE
 
-    // Delay transition so branding splash is visible to the user.
+    // Display the splash screen for 1.8 seconds to establish school branding.
     binding.root.postDelayed({
         binding.splashContainer.visibility = View.GONE
         binding.setupContainer.visibility = View.VISIBLE
     }, 1800)
 }
 
-// Adjusts setup form padding/scroll so login controls stay visible above keyboard.
+// Adjusts the setup screen's padding and scroll position to keep the login button visible when the soft keyboard is open.
 fun setupKeyboardSafeLoginScroll(binding: ActivityMainBinding) {
     val rootView = binding.root
     val setupContainer = binding.setupContainer
@@ -64,9 +69,10 @@ fun setupKeyboardSafeLoginScroll(binding: ActivityMainBinding) {
         val keyboardHeight = rootView.height - rect.bottom
         val keyboardVisible = keyboardHeight > rootView.height * 0.15
 
-        // Ignore updates while setup screen is not visible.
+        // Only process layout changes while the setup/login screen is active.
         if (setupContainer.visibility != View.VISIBLE) return@addOnGlobalLayoutListener
 
+        // Increase bottom padding to push the form above the keyboard.
         val extraBottomPadding = if (keyboardVisible) keyboardHeight + 24 else 24
         binding.setupFormContainer.setPadding(
             binding.setupFormContainer.paddingLeft,
@@ -75,10 +81,9 @@ fun setupKeyboardSafeLoginScroll(binding: ActivityMainBinding) {
             extraBottomPadding
         )
 
-        // No auto-scroll needed once keyboard is hidden.
+        // Ensure the "Login" button is smoothly scrolled into view.
         if (!keyboardVisible) return@addOnGlobalLayoutListener
 
-        // Scroll login button into view once keyboard appears.
         setupContainer.post {
             setupContainer.smoothScrollTo(0, binding.loginButton.bottom)
         }

@@ -7,45 +7,51 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-// Extension functions managing meal data loading via Arbor GraphQL sync.
-// Architecture: "Load Today's Meals" → one GraphQL call → writes to Firestore → app reads Firestore.
+/**
+ * Extension functions for MainActivity that handle importing meal data from Arbor MIS.
+ * The workflow involves triggering a Firebase Cloud Function that performs a GraphQL
+ * query against Arbor and populates the Firestore database for the current day.
+ */
 
-// Presses "Load Today's Meals":
-//  1. Sets loading state.
-//  2. Calls syncTodaysMealChoices (single GraphQL call to Arbor).
-//  3. On success: reads the written records from Firestore and displays them.
-//  4. On failure: shows error and clears loading state.
+// Initiates the process of fetching today's meal choices from the Arbor MIS.
 internal fun MainActivity.fetchStudentsFromArbor() {
     isLoadingMeals = true
     firebaseStatusMessage = getString(R.string.loading_todays_meals)
+    
+    // Update the UI to reflect the loading state.
     renderKitchenView()
+    
+    // Execute the cloud sync function.
     runMealChoicesSync(silent = false)
 }
 
-// Returns today's date as YYYY-MM-DD in Europe/London timezone.
+// Generates a YYYY-MM-DD date string formatted for the London timezone, as required by Arbor.
 private fun todayLondonDate(): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.UK)
     sdf.timeZone = TimeZone.getTimeZone("Europe/London")
     return sdf.format(Date())
 }
 
-// Calls syncTodaysMealChoices (single GraphQL call) which upserts full childRecords.
-// On success: loads the written records from Firestore and updates the UI.
-// On failure: clears loading state and shows error.
+// Executes the HttpsCallable to synchronize meal data from Arbor to Firestore.
 internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
     arborSyncService.syncMealChoices(
         schoolName = selectedSchool,
         targetDate = todayLondonDate(),
         onSuccess = { data ->
+            // Parse response metadata from the synchronization function.
             val success = data?.get("success") as? Boolean ?: true
             val written = (data?.get("written") as? Number)?.toInt() ?: 0
             val serverMsg = data?.get("message") as? String ?: ""
+            
             Log.d(
                 "MealChoicesSync",
                 "Sync result: success=$success written=$written school=$selectedSchool msg=$serverMsg"
             )
+            
             isLoadingMeals = false
+            
             if (success && written > 0) {
+                // Success: Records were written to Firestore, now fetch them for the local UI.
                 firebaseStatusMessage = null
                 mealsLoadedTime = System.currentTimeMillis()
                 loadChildRecordsFromFirestore()
@@ -55,6 +61,7 @@ internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
                         .show()
                 }
             } else if (success && written == 0) {
+                // Success but empty: No records found for the target date.
                 firebaseStatusMessage = "No meal selections found in Arbor for today"
                 renderKitchenView()
                 if (!silent) {
@@ -65,7 +72,7 @@ internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
                     ).show()
                 }
             } else {
-                // Callable returned success=false with an error message from the server.
+                // Backend logic error: The function ran but encountered an API/Logic issue.
                 firebaseStatusMessage = "Sync error: $serverMsg"
                 renderKitchenView()
                 if (!silent) {
@@ -74,6 +81,7 @@ internal fun MainActivity.runMealChoicesSync(silent: Boolean) {
             }
         },
         onFailure = { error ->
+            // Infrastructure error: Network failure or Cloud Function exception.
             Log.e("MealChoicesSync", "Meal choices sync failed", error)
             repository.logErrorToFirebase("MealChoicesSync", error, selectedSchool)
             isLoadingMeals = false

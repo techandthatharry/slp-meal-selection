@@ -4,13 +4,17 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.techandthat.slpmealselection.model.MealEntry
 
-// Handles all Firestore CRUD operations for child meal records.
+/**
+ * Data Repository responsible for all Firestore CRUD operations.
+ * Handles student rosters, meal selection persistence, billing queues, and error logging.
+ */
 class ChildRecordsRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
+    // Reference to the primary collection for today's meal records.
     private val childRecordsCollection = firestore.collection("childRecords")
 
-    // Lightweight record shape used when loading existing records.
+    // Lightweight record shape used for internal mapping when fetching data.
     data class ChildRecord(
         val documentId: String,
         val childName: String,
@@ -21,7 +25,7 @@ class ChildRecordsRepository(
         val served: Boolean
     )
 
-    // Checks whether any childRecords exist for the given school (fast limit-1 query).
+    // Checks if a school already has records for today (used to skip redundant syncs).
     fun hasRecordsForSchool(
         schoolName: String,
         onResult: (Boolean) -> Unit,
@@ -35,7 +39,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
-    // Reads childRecords from Firestore filtered to the given school.
+    // Fetches all student/meal records for a specific school.
     fun loadRecords(
         schoolName: String,
         onSuccess: (List<ChildRecord>) -> Unit,
@@ -45,7 +49,7 @@ class ChildRecordsRepository(
             .whereEqualTo("schoolName", schoolName)
             .get()
             .addOnSuccessListener { snapshot ->
-                // Convert Firestore docs to domain rows and skip malformed entries.
+                // Map Firestore documents to local ChildRecord objects.
                 val records = snapshot.documents.mapNotNull { doc ->
                     val childName = doc.getString("childName")
                     val className = doc.getString("className")
@@ -56,7 +60,10 @@ class ChildRecordsRepository(
                         ?.mapNotNull { it as? String }
                         ?: emptyList()
                     val served = doc.getBoolean("served") ?: false
+                    
+                    // Filter out any corrupted or incomplete records.
                     if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
+                    
                     ChildRecord(doc.id, childName, className, schoolName, mealSelected, dietaryRequirements, served)
                 }
                 onSuccess(records)
@@ -64,7 +71,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
-    // Seeds initial static data into Firestore for bootstrap/demo scenarios.
+    // Populates Firestore with initial dummy data for development and testing.
     fun seedInitialData(
         initialDummyData: List<MealEntry>,
         schoolName: String,
@@ -73,7 +80,7 @@ class ChildRecordsRepository(
     ) {
         val batch = firestore.batch()
 
-        // Create/merge one Firestore document per dummy record.
+        // Batch upload each dummy entry.
         initialDummyData.forEach { entry ->
             val record = mapOf(
                 "childName" to entry.name,
@@ -89,7 +96,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
-    // Deletes all childRecords belonging to the given school only.
+    // Removes all student meal records for a school (typically called at end-of-day).
     fun deleteAllRecords(
         schoolName: String,
         onSuccess: () -> Unit,
@@ -101,7 +108,7 @@ class ChildRecordsRepository(
             .addOnSuccessListener { snapshot ->
                 val batch = firestore.batch()
 
-                // Queue delete operation for each existing record.
+                // Queue all documents for deletion in a single batch.
                 snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
 
                 batch.commit()
@@ -111,7 +118,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
-    // Full record shape used when saving Arbor sync results.
+    // Detailed model used for synchronization from Arbor.
     data class ArborStudentRecord(
         val documentId: String,
         val childName: String,
@@ -122,13 +129,12 @@ class ChildRecordsRepository(
         val dietaryRequirements: List<String>
     )
 
-    // Upserts Arbor records into Firestore in a single batch transaction.
+    // Synchronizes records from the Arbor API into the local Firestore collection.
     fun upsertArborRecords(
         records: List<ArborStudentRecord>,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        // Short-circuit when there is nothing to write.
         if (records.isEmpty()) {
             onSuccess()
             return
@@ -136,7 +142,7 @@ class ChildRecordsRepository(
 
         val batch = firestore.batch()
 
-        // Queue create/update operation for every Arbor record.
+        // Use merge sets to update existing records or create new ones without overwriting 'served' flags.
         records.forEach { record ->
             batch.set(
                 childRecordsCollection.document(record.documentId),
@@ -159,13 +165,14 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
-    // Persists a served meal event and queues billing payload for Arbor handoff.
+    // Updates a student's status as served and queues a billing record for the Arbor sync.
     fun markMealServed(
         entry: MealEntry,
         schoolName: String,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        // Generate a deterministic document ID.
         val docId = entry.documentId
             ?: "${entry.clazz}_${entry.name}".replace(" ", "_")
         val recordRef = childRecordsCollection.document(docId)
@@ -173,7 +180,7 @@ class ChildRecordsRepository(
 
         val batch = firestore.batch()
 
-        // Mark the source child record as served for prep/billing consistency.
+        // Update the primary meal record.
         batch.set(
             recordRef,
             mapOf(
@@ -184,7 +191,7 @@ class ChildRecordsRepository(
             com.google.firebase.firestore.SetOptions.merge()
         )
 
-        // Enqueue a billing payload that can be processed and sent back to Arbor.
+        // Add a new entry to the billing queue for end-of-service processing.
         batch.set(
             billingRef,
             mapOf(
@@ -203,7 +210,7 @@ class ChildRecordsRepository(
             .addOnFailureListener(onFailure)
     }
 
-    // Logs error details into a central 'errorLog' collection in Firestore.
+    // Logs application errors and stack traces to a dedicated Firestore collection for debugging.
     fun logErrorToFirebase(context: String, error: Throwable, schoolName: String?) {
         val errorData = mapOf(
             "context" to context,
@@ -215,7 +222,7 @@ class ChildRecordsRepository(
         firestore.collection("errorLog")
             .add(errorData)
             .addOnFailureListener {
-                // Fail silently if even error logging fails
+                // Fail silently if logging itself fails.
             }
     }
 }

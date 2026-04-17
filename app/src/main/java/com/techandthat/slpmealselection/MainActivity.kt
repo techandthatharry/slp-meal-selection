@@ -20,14 +20,20 @@ import com.techandthat.slpmealselection.ui.setupKeyboardSafeLoginScroll
 import com.techandthat.slpmealselection.ui.setupSchoolSpinner
 import com.techandthat.slpmealselection.ui.showSplashThenSetup
 
-// Coordinates setup, kitchen, and child tablet workflows for the app.
+/**
+ * The primary activity and entry point for the SLP Meal Selection application.
+ * This class coordinates the setup, kitchen, and child tablet workflows.
+ * It manages the global application state and delegates UI rendering to specialized controllers.
+ */
 class MainActivity : ComponentActivity() {
 
+    // Core infrastructure components for data, auth, and network.
     internal lateinit var binding: ActivityMainBinding
     internal val repository = ChildRecordsRepository()
     internal val authManager = AuthManager()
     internal val arborSyncService = ArborSyncService()
 
+    // Static configuration and fallback data.
     internal val schools = listOf(
         "St Luke's Primary",
         "St Mary's Primary",
@@ -42,9 +48,11 @@ class MainActivity : ComponentActivity() {
         MealEntry("Mia Davies", "Year 2", "Jacket Potato")
     )
 
+    // In-memory state management for the current session.
     internal val fallbackMealByChild = initialDummyData.associate { "${it.name}|${it.clazz}" to it.meal }
     internal val simulatedDatabase = mutableListOf<MealEntry>()
 
+    // View state flags and session variables.
     internal var selectedTabletType: TabletType? = null
     internal var selectedSchool: String = schools.first()
     internal var serviceStarted = false
@@ -58,6 +66,7 @@ class MainActivity : ComponentActivity() {
     internal var servicePausedByKitchen = false
     internal var showingServiceStats = false
 
+    // Data model for capturing end-of-service summary statistics.
     internal data class ServiceStats(
         val mealsServed: Int,
         val studentsLoaded: Int,
@@ -71,37 +80,45 @@ class MainActivity : ComponentActivity() {
         val monthTotal: Int = 0
     )
 
+    // Timing and analytics state.
     internal var latestServiceStats: ServiceStats? = null
     internal var mealsLoadedTime: Long? = null
     internal var serviceStartedTime: Long? = null
 
-    // Inflates views, initializes setup UI, and wires primary event listeners.
+    // Activity lifecycle: Initializes binding, system UI, and splash screen.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Configure full-screen mode and UI helpers.
         hideSystemUi(window)
         setupSchoolSpinner(this, binding, schools)
         setupKeyboardSafeLoginScroll(binding)
-        // Load SLP logo into splash and header areas (PNG with transparent background).
+        
+        // Load branding assets from the assets folder.
         decodeAssetBitmap(assets, "SLP logo, no text.png")?.let {
             binding.splashLogo.setImageBitmap(it)
             binding.headerLogo.setImageBitmap(it)
         }
-        // Load footer branding logo.
         decodeAssetBitmap(assets, "TechandThatLogoWhite.png")?.let {
             binding.footerLogo.setImageBitmap(it)
         }
+        
+        // Trigger initial splash screen transition.
         showSplashThenSetup(binding)
+        
+        // Initialize interactive listeners.
         bindListeners()
     }
 
-    // Attaches all interactive click handlers used by setup/kitchen/child flows.
+    // Connects UI elements to their corresponding logic handlers across all application states.
     internal fun bindListeners() {
+        // Setup Screen listeners.
         binding.loginButton.setOnClickListener { handleLogin() }
 
+        // Kitchen Service controls.
         binding.startServiceButton.setOnClickListener {
             serviceStarted = true
             servicePausedByKitchen = false
@@ -110,6 +127,7 @@ class MainActivity : ComponentActivity() {
             renderAppContent()
         }
 
+        // Shared Header/Navigation.
         binding.headerLogo.setOnClickListener { returnToSetup() }
 
         binding.pauseServiceHeaderButton.setOnClickListener {
@@ -120,11 +138,13 @@ class MainActivity : ComponentActivity() {
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
         binding.changeSchoolButton.setOnClickListener { showChangeSchoolDialog() }
 
+        // Data Loading for Kitchen.
         binding.loadTodaysMealsButton.setOnClickListener {
             if (isLoadingMeals || serviceStarted) return@setOnClickListener
 
             val hasPrepData = simulatedDatabase.any { !it.served }
             if (hasPrepData) {
+                // Confirm before overwriting local unsaved data.
                 androidx.appcompat.app.AlertDialog.Builder(this)
                     .setTitle(getString(R.string.reload_meals_title))
                     .setMessage(getString(R.string.reload_meals_message))
@@ -138,6 +158,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Child Mode Navigation.
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
             selectedClass = null
@@ -166,9 +187,11 @@ class MainActivity : ComponentActivity() {
             renderChildView()
         }
 
+        // Kitchen Order Fulfillment.
         binding.mealServedButton.setOnClickListener {
             val servedEntry = activeOrder ?: return@setOnClickListener
 
+            // Optimistically update the UI.
             setMealServedLocally(servedEntry, served = true)
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
@@ -179,13 +202,15 @@ class MainActivity : ComponentActivity() {
             }
             renderKitchenView()
 
+            // Persist the change to Firestore.
             repository.markMealServed(
                 entry = servedEntry,
                 schoolName = selectedSchool,
                 onSuccess = {
-                    // No-op: UI already updated optimistically.
+                    // Success is handled optimistically.
                 },
                 onFailure = { error ->
+                    // Rollback UI on network/database failure.
                     setMealServedLocally(servedEntry, served = false)
                     activeOrder = servedEntry
                     firebaseStatusMessage = "Failed to save served meal"
@@ -199,6 +224,7 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        // Stats Dashboard.
         binding.returnToDashboardButton.setOnClickListener {
             showingServiceStats = false
             latestServiceStats = null
@@ -206,7 +232,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Delegates rendering to Kitchen or Child view based on selected tablet type.
+    // High-level UI dispatcher that switches between tablet mode views.
     internal fun renderAppContent() {
         when (selectedTabletType) {
             TabletType.KITCHEN -> renderKitchenView()
@@ -215,7 +241,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Resolves selected tablet type radio option into TabletType enum.
+    // Helper to resolve the radio group selection into a TabletType enum.
     internal fun resolveTabletType(): TabletType? {
         val checkedId = binding.tabletTypeGroup.checkedRadioButtonId
         if (checkedId == View.NO_ID) return null

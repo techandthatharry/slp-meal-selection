@@ -3,15 +3,20 @@ package com.techandthat.slpmealselection
 import android.widget.Toast
 import com.techandthat.slpmealselection.model.MealEntry
 
-// Extension functions managing Firestore data loading, auth bootstrapping, and local state updates.
+/**
+ * Controller extension for MainActivity that manages high-level data synchronization
+ * between the local in-memory state and the remote Firestore backend.
+ */
 
-// Ensures user is authenticated before reading roster data from Firestore.
+// Ensures the user has a valid Firebase session before attempting to load student roster data.
 internal fun MainActivity.authenticateThenLoadRoster() {
+    // If already signed in, proceed directly to data loading.
     if (authManager.currentUserExists()) {
         loadChildRecordsFromFirestore()
         return
     }
 
+    // Attempt anonymous sign-in to satisfy Firestore security rules.
     authManager.signInAnonymously(
         onSuccess = {
             loadChildRecordsFromFirestore()
@@ -30,17 +35,19 @@ internal fun MainActivity.authenticateThenLoadRoster() {
     )
 }
 
-// Loads Firestore child records into in-memory meal list used by both tablet modes.
+// Fetches today's student records from Firestore and maps them to local model objects.
 internal fun MainActivity.loadChildRecordsFromFirestore() {
     repository.loadRecords(
         schoolName = selectedSchool,
         onSuccess = { records ->
+            // Handle the case where no records exist for the current school/day.
             if (records.isEmpty()) {
                 simulatedDatabase.clear()
                 renderAppContent()
                 return@loadRecords
             }
 
+            // Map Firestore DTOs to local UI-facing MealEntry models.
             val mapped = records.map { record ->
                 val meal = record.mealSelected
                     ?.takeIf { it.isNotBlank() }
@@ -57,11 +64,13 @@ internal fun MainActivity.loadChildRecordsFromFirestore() {
                 )
             }
 
+            // Update the master list and refresh the UI.
             simulatedDatabase.clear()
             simulatedDatabase.addAll(mapped)
             renderAppContent()
         },
         onFailure = { error ->
+            // Display loading failure to the user.
             val failureMessage = getString(
                 R.string.firebase_load_failed_with_reason,
                 error.message ?: "unknown"
@@ -74,8 +83,9 @@ internal fun MainActivity.loadChildRecordsFromFirestore() {
     )
 }
 
-// Updates in-memory meal entries by document ID or name+class for immediate UI refreshes.
+// Updates the "served" status of a specific meal entry in the local list for zero-latency UI updates.
 internal fun MainActivity.setMealServedLocally(target: MealEntry, served: Boolean) {
+    // Identify the matching record in the in-memory list using ID or composite key.
     val index = simulatedDatabase.indexOfFirst { entry ->
         if (!target.documentId.isNullOrBlank() && !entry.documentId.isNullOrBlank()) {
             entry.documentId == target.documentId
@@ -84,6 +94,7 @@ internal fun MainActivity.setMealServedLocally(target: MealEntry, served: Boolea
         }
     }
 
+    // Apply the update locally.
     if (index >= 0) {
         simulatedDatabase[index].served = served
     } else {

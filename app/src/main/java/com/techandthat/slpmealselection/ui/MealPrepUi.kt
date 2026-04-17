@@ -9,17 +9,22 @@ import com.techandthat.slpmealselection.R
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import java.util.Locale
 
-// Renders the Kitchen meal-prep summary list with counts and meal icons.
+/**
+ * UI components for the "Kitchen-Facing Tablet" mode.
+ * Handles the rendering of the meal preparation summary list, which aggregates
+ * student meal choices into total counts for the kitchen staff.
+ */
 object MealPrepUi {
-    // Draws meal rows from grouped meal counts or an empty-state message.
+    // Populates the kitchen dashboard with rows showing the total count for each meal type.
     fun renderMealPrepRows(
         context: Context,
         binding: ActivityMainBinding,
         volumes: Map<String, Int>
     ) {
+        // Reset the container before drawing new rows.
         binding.prepSummaryContainer.removeAllViews()
 
-        // Show empty placeholder when no prep data exists.
+        // Display an empty state message if no meals have been loaded for the day.
         if (volumes.isEmpty()) {
             val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
             val emptyState = TextView(context).apply {
@@ -34,23 +39,27 @@ object MealPrepUi {
 
         val inflater = LayoutInflater.from(context)
 
-        // Render one row per meal type in alphabetical order.
+        // Sort meal names alphabetically and create a summary row for each.
         volumes.entries
             .sortedBy { it.key.lowercase(Locale.getDefault()) }
             .forEach { (mealName, count) ->
+                // Inflate the custom row layout.
                 val row = inflater.inflate(R.layout.item_meal_prep, binding.prepSummaryContainer, false)
                 val iconView = row.findViewById<TextView>(R.id.mealTypeIcon)
                 val countView = row.findViewById<TextView>(R.id.mealCountText)
                 val nameView = row.findViewById<TextView>(R.id.mealNameText)
 
+                // Assign the appropriate icon and total volume to the row.
                 iconView.text = mealIconFor(mealName)
                 countView.text = context.getString(R.string.meal_count_format, count)
                 nameView.text = mealName
+                
+                // Add the completed row to the dashboard.
                 binding.prepSummaryContainer.addView(row)
             }
     }
 
-    // Returns a meal-type emoji icon based on meal name keywords.
+    // Identifies a representative emoji icon for the given meal name based on keyword matching.
     private fun mealIconFor(mealName: String): String {
         val normalized = mealName.lowercase(Locale.getDefault())
         return when {
@@ -63,7 +72,7 @@ object MealPrepUi {
             "wrap" in normalized || "sandwich" in normalized -> "🌯"
             "salad" in normalized -> "🥗"
             "burger" in normalized -> "🍔"
-            else -> "🍽️"
+            else -> "🍽️" // Default icon for unrecognized meals.
         }
     }
 }
