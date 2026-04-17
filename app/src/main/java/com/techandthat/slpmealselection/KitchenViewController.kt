@@ -83,7 +83,8 @@ internal fun MainActivity.renderKitchenView() {
     // Update the visual status indicator (Live/Paused/Ready).
     val statusText = when {
         serviceStarted && servicePausedByKitchen -> getString(R.string.service_status_paused)
-        serviceStarted -> getString(R.string.service_status_started)
+        serviceStarted && activeOrder == null -> getString(R.string.service_status_started)
+        serviceStarted && activeOrder != null -> ""
         !hasPrepData -> getString(R.string.service_status_ready_to_load)
         else -> ""
     }
@@ -102,7 +103,7 @@ internal fun MainActivity.renderKitchenView() {
             this,
             when {
                 serviceStarted && servicePausedByKitchen -> R.color.kitchen_danger
-                serviceStarted -> R.color.kitchen_success
+                serviceStarted && activeOrder == null -> R.color.kitchen_success
                 else -> R.color.kitchen_text_secondary
             }
         )

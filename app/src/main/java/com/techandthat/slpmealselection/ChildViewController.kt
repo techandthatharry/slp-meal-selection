@@ -114,6 +114,14 @@ internal fun MainActivity.renderChildView() {
                 },
                 onChildSelected = { child ->
                     activeOrder = child
+                    // Notify the kitchen immediately via Firestore.
+                    repository.markCheckedIn(
+                        entry = child,
+                        onSuccess = { /* Success reflected via listener */ },
+                        onFailure = { error ->
+                            repository.logErrorToFirebase("MarkCheckedIn_Auto", error, selectedSchool)
+                        }
+                    )
                     childScreen = ChildScreen.SUCCESS
                     renderAppContent()
                 }

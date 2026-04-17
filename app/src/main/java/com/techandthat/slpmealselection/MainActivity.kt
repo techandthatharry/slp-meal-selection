@@ -73,9 +73,12 @@ class MainActivity : ComponentActivity() {
     internal fun startFirestoreListener() {
         if (firestoreListener != null) return
         
+        android.util.Log.d("SLP_SYNC", "Starting Firestore listener for school: $selectedSchool")
+        
         firestoreListener = repository.listenForCheckIns(
             schoolName = selectedSchool,
             onUpdate = { records ->
+                android.util.Log.d("SLP_SYNC", "Firestore update received: ${records.size} records")
                 // Update the global simulated database with fresh data from Firestore.
                 val mapped = records.map { record ->
                     val meal = record.mealSelected
@@ -98,17 +101,11 @@ class MainActivity : ComponentActivity() {
                 simulatedDatabase.clear()
                 simulatedDatabase.addAll(mapped)
 
-                // Logic for the Kitchen Tablet: Automatically pick the next checked-in student as the active order.
-                if (selectedTabletType == TabletType.KITCHEN && serviceStarted && activeOrder == null) {
-                    val nextInQueue = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
-                    if (nextInQueue != null) {
-                        activeOrder = nextInQueue
-                    }
-                }
-
+                // Refresh the UI. The auto-pickup and overlay-clear logic is handled in the renderers.
                 renderAppContent()
             },
             onFailure = { error ->
+                android.util.Log.e("SLP_SYNC", "Firestore listener failed", error)
                 repository.logErrorToFirebase("FirestoreListener", error, selectedSchool)
             }
         )
@@ -246,19 +243,6 @@ class MainActivity : ComponentActivity() {
         }
 
         binding.checkInSuccessButton.setOnClickListener {
-            val confirmedOrder = activeOrder
-            if (confirmedOrder != null) {
-                // Mark the child as checked in on the backend.
-                repository.markCheckedIn(
-                    entry = confirmedOrder,
-                    onSuccess = {
-                        // Success is reflected via the real-time listener.
-                    },
-                    onFailure = { error ->
-                        repository.logErrorToFirebase("MarkCheckedIn", error, selectedSchool)
-                    }
-                )
-            }
             showWaitingOverlayAfterConfirm = true
             childScreen = ChildScreen.NAME_SELECTION
             renderChildView()
@@ -277,7 +261,9 @@ class MainActivity : ComponentActivity() {
             } else {
                 ChildScreen.NAME_SELECTION
             }
-            renderKitchenView()
+            
+            // Trigger high-level dispatcher to auto-pickup next student if available.
+            renderAppContent()
 
             // Persist the change to Firestore.
             repository.markMealServed(
@@ -296,7 +282,7 @@ class MainActivity : ComponentActivity() {
                         error.message ?: "Failed to mark meal served",
                         android.widget.Toast.LENGTH_LONG
                     ).show()
-                    renderKitchenView()
+                    renderAppContent()
                 }
             )
         }
@@ -311,6 +297,20 @@ class MainActivity : ComponentActivity() {
 
     // High-level UI dispatcher that switches between tablet mode views.
     internal fun renderAppContent() {
+        // Automatically pick the next checked-in student for the kitchen if available.
+        if (selectedTabletType == TabletType.KITCHEN && serviceStarted && activeOrder == null) {
+            activeOrder = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
+        }
+
+        // Automatically clear the waiting overlay on the child tablet if the order has been served.
+        if (selectedTabletType == TabletType.CHILD && activeOrder != null) {
+            val currentOrderInDb = simulatedDatabase.find { it.documentId == activeOrder?.documentId }
+            if (currentOrderInDb?.served == true) {
+                activeOrder = null
+                showWaitingOverlayAfterConfirm = false
+            }
+        }
+
         when (selectedTabletType) {
             TabletType.KITCHEN -> renderKitchenView()
             TabletType.CHILD -> renderChildView()

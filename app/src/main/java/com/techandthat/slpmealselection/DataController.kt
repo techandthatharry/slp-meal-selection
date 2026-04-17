@@ -60,7 +60,8 @@ internal fun MainActivity.loadChildRecordsFromFirestore() {
                     documentId = record.documentId,
                     schoolName = record.schoolName,
                     dietaryRequirements = record.dietaryRequirements,
-                    served = record.served
+                    served = record.served,
+                    checkedIn = record.checkedIn
                 )
             }
 
