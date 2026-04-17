@@ -14,7 +14,7 @@ class ChildRecordsRepository(
     // Reference to the primary collection for today's meal records.
     private val childRecordsCollection = firestore.collection("childRecords")
 
-    // Lightweight record shape used for internal mapping when fetching data.
+    // detailed model used for internal mapping when fetching data.
     data class ChildRecord(
         val documentId: String,
         val childName: String,
@@ -22,8 +22,44 @@ class ChildRecordsRepository(
         val schoolName: String?,
         val mealSelected: String?,
         val dietaryRequirements: List<String>,
+        val checkedIn: Boolean,
         val served: Boolean
     )
+
+    // Listen for real-time updates to child records (e.g., check-ins from other tablets).
+    fun listenForCheckIns(
+        schoolName: String,
+        onUpdate: (List<ChildRecord>) -> Unit,
+        onFailure: (Exception) -> Unit
+    ): com.google.firebase.firestore.ListenerRegistration {
+        return childRecordsCollection
+            .whereEqualTo("schoolName", schoolName)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onFailure(error)
+                    return@addSnapshotListener
+                }
+                if (snapshot == null) return@addSnapshotListener
+
+                val records = snapshot.documents.mapNotNull { doc ->
+                    val childName = doc.getString("childName")
+                    val className = doc.getString("className")
+                    val schoolName = doc.getString("schoolName")
+                    val mealSelected = doc.getString("mealSelected")
+                    @Suppress("UNCHECKED_CAST")
+                    val dietaryRequirements = (doc.get("dietaryRequirements") as? List<Any>)
+                        ?.mapNotNull { it as? String }
+                        ?: emptyList()
+                    val served = doc.getBoolean("served") ?: false
+                    val checkedIn = doc.getBoolean("checkedIn") ?: false
+
+                    if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
+
+                    ChildRecord(doc.id, childName, className, schoolName, mealSelected, dietaryRequirements, checkedIn, served)
+                }
+                onUpdate(records)
+            }
+    }
 
     // Checks if a school already has records for today (used to skip redundant syncs).
     fun hasRecordsForSchool(
@@ -60,11 +96,12 @@ class ChildRecordsRepository(
                         ?.mapNotNull { it as? String }
                         ?: emptyList()
                     val served = doc.getBoolean("served") ?: false
+                    val checkedIn = doc.getBoolean("checkedIn") ?: false
                     
                     // Filter out any corrupted or incomplete records.
                     if (childName.isNullOrBlank() || className.isNullOrBlank()) return@mapNotNull null
                     
-                    ChildRecord(doc.id, childName, className, schoolName, mealSelected, dietaryRequirements, served)
+                    ChildRecord(doc.id, childName, className, schoolName, mealSelected, dietaryRequirements, checkedIn, served)
                 }
                 onSuccess(records)
             }
@@ -153,6 +190,7 @@ class ChildRecordsRepository(
                     "source" to record.source,
                     "mealSelected" to record.mealSelected,
                     "dietaryRequirements" to record.dietaryRequirements,
+                    "checkedIn" to false,
                     "served" to false,
                     "updatedAt" to FieldValue.serverTimestamp()
                 ),
@@ -161,6 +199,25 @@ class ChildRecordsRepository(
         }
 
         batch.commit()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener(onFailure)
+    }
+
+    // Updates a student's status as served and queues a billing record for the Arbor sync.
+    fun markCheckedIn(
+        entry: MealEntry,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val docId = entry.documentId ?: return
+        childRecordsCollection.document(docId)
+            .update(
+                mapOf(
+                    "checkedIn" to true,
+                    "checkedInAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            )
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener(onFailure)
     }

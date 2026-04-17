@@ -69,12 +69,20 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                 "Upload result success=$success uploaded=$uploaded deleted=$deleted failed=$failed message=$message"
             )
 
+            // Calculate final statistics for the session summary dashboard.
+            val mealsServedCount = simulatedDatabase.count { it.served }
+
             // Handle partial or total failures from the Arbor API side.
-            if (!success) {
-                Log.e("ArborBillingUpload", "Upload failed but force ending service for UI feedback. Error: $message")
+            if (!success || (uploaded == 0 && mealsServedCount > 0)) {
+                val errorContext = if (uploaded == 0 && mealsServedCount > 0) "ArborSyncZeroUploadError" else "ArborBillingUpload"
+                val errorMessage = if (uploaded == 0 && mealsServedCount > 0) 
+                    "Critical: $mealsServedCount meals served but 0 uploaded to Arbor. Queue might be empty or Function bypassed."
+                    else "Upload result success=false. message=$message"
+
+                Log.e("ArborBillingUpload", "$errorMessage. Force ending service for UI feedback.")
                 repository.logErrorToFirebase(
-                    "ArborBillingUpload", 
-                    Exception("Upload result success=false. message=$message backendError=$backendError firstFailureReason=$firstFailureReason"), 
+                    errorContext, 
+                    Exception("$errorMessage backendError=$backendError firstFailureReason=$firstFailureReason"), 
                     selectedSchool
                 )
                 
@@ -85,10 +93,11 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                 val detailText = arborFailureText
                     ?: backendError?.takeIf { it.isNotBlank() }
                     ?: message
-                    ?: "Failed to upload all billing rows to Arbor sandbox"
+                    ?: if (uploaded == 0 && mealsServedCount > 0) "Meals were served but not uploaded. Check error log." 
+                    else "Failed to upload all billing rows to Arbor sandbox"
                 
                 firebaseStatusMessage = "Arbor upload incomplete. Uploaded $uploaded, failed $failed. $detailText"
-                Toast.makeText(this, "Arbor Sync Failed: $detailText. Ending service anyway.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Arbor Sync Issues: $detailText. Ending service anyway.", Toast.LENGTH_LONG).show()
             } else {
                 firebaseStatusMessage = "Arbor billing uploaded ($uploaded) and queue cleaned ($deleted). Ending service..."
             }
@@ -96,7 +105,6 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
             renderKitchenView()
 
             // Calculate final statistics for the session summary dashboard.
-            val mealsServedCount = simulatedDatabase.count { it.served }
             val mealVolumesMap = simulatedDatabase.filter { it.served }.groupingBy { it.meal }.eachCount()
             val loadedTime = mealsLoadedTime ?: System.currentTimeMillis()
             val startTime = serviceStartedTime ?: System.currentTimeMillis()

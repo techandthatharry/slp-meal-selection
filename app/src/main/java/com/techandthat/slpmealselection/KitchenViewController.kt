@@ -5,6 +5,10 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import com.techandthat.slpmealselection.ui.MealPrepUi
+import android.text.TextUtils
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.TextView
 
 /**
  * Controller extension for MainActivity that manages the "Kitchen-Facing Tablet" mode.
@@ -176,7 +180,7 @@ internal fun MainActivity.renderKitchenView() {
         if (dietaryText.isNullOrBlank()) {
             binding.kitchenOrderDietaryRequirements.visibility = View.GONE
         } else {
-            binding.kitchenOrderDietaryRequirements.text = "DIETARY: $dietaryText"
+            binding.kitchenOrderDietaryRequirements.text = getString(R.string.dietary_label, dietaryText)
             binding.kitchenOrderDietaryRequirements.visibility = View.VISIBLE
         }
 
@@ -192,8 +196,8 @@ internal fun MainActivity.renderKitchenView() {
         binding.serviceStatsCard.visibility = View.VISIBLE
         binding.serviceStatsLine1.text = getString(R.string.stats_meals_served, stats.mealsServed)
         binding.serviceStatsLine2.text = getString(R.string.stats_students_loaded, stats.studentsLoaded)
-        binding.serviceStatsLine3.text = "Meals loaded at: ${stats.mealsLoadedTimeLabel}"
-        binding.serviceStatsLine4.text = "Prep time: ${stats.prepDurationMinutes} mins"
+        binding.serviceStatsLine3.text = getString(R.string.stats_loaded_at, stats.mealsLoadedTimeLabel)
+        binding.serviceStatsLine4.text = getString(R.string.stats_prep_time, stats.prepDurationMinutes)
     } else {
         binding.serviceStatsCard.visibility = View.GONE
     }
@@ -240,7 +244,7 @@ internal fun MainActivity.renderServiceStatsView() {
         binding.statsMonthLabel.text = getString(R.string.stats_month)
         
         binding.statsLoadedAtValue.text = stats.mealsLoadedTimeLabel
-        binding.statsPrepTimeValue.text = "${stats.prepDurationMinutes}m"
+        binding.statsPrepTimeValue.text = getString(R.string.stats_prep_time_value, stats.prepDurationMinutes)
         
         // Calculate Arbor synchronization success percentage.
         val syncPercent = if (stats.studentsLoaded > 0) {
@@ -275,25 +279,25 @@ private fun MainActivity.renderMealVolumeBars(volumes: Map<String, Int>) {
     val density = resources.displayMetrics.density
 
     volumes.forEach { (meal, count) ->
-        val barWrapper = android.widget.LinearLayout(this).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1f)
-            orientation = android.widget.LinearLayout.VERTICAL
-            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+        val barWrapper = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
 
-        val valueLabel = android.widget.TextView(this).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+        val valueLabel = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             text = count.toString()
             textSize = 10f
             setTextColor(ContextCompat.getColor(this@renderMealVolumeBars, R.color.kitchen_text_secondary))
         }
 
-        val bar = android.view.View(this).apply {
+        val bar = View(this).apply {
             val barHeightDp = (count.toFloat() / maxVolume * 120).coerceAtLeast(4f)
-            layoutParams = android.widget.LinearLayout.LayoutParams(
+            layoutParams = LinearLayout.LayoutParams(
                 resources.getDimensionPixelSize(R.dimen.stats_bar_width),
                 (barHeightDp * density).toInt()
             ).apply {
@@ -301,22 +305,22 @@ private fun MainActivity.renderMealVolumeBars(volumes: Map<String, Int>) {
                 bottomMargin = (4 * density).toInt()
             }
             background = ContextCompat.getDrawable(this@renderMealVolumeBars, R.drawable.stats_bar_bg)
-            backgroundTintList = android.content.res.ColorStateList.valueOf(
+            backgroundTintList = ColorStateList.valueOf(
                 ContextCompat.getColor(this@renderMealVolumeBars, R.color.slp_blue)
             )
         }
 
-        val label = android.widget.TextView(this).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+        val label = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             text = meal.take(5) // Truncate meal names for compact display.
             textSize = 9f
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             setTextColor(ContextCompat.getColor(this@renderMealVolumeBars, R.color.kitchen_text_secondary))
             maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
+            ellipsize = TextUtils.TruncateAt.END
         }
 
         barWrapper.addView(valueLabel)
@@ -336,31 +340,31 @@ internal fun MainActivity.renderStatsGraph() {
     val density = resources.displayMetrics.density
 
     dailyCounts.forEachIndexed { index, count ->
-        val barWrapper = android.widget.LinearLayout(this).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1f)
-            orientation = android.widget.LinearLayout.VERTICAL
-            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+        val barWrapper = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
 
         // Add numerical value label above each bar.
         if (count > 0) {
-            val valueLabel = android.widget.TextView(this).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            val valueLabel = TextView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
                 )
                 text = count.toString()
                 textSize = 10f
                 setTextColor(ContextCompat.getColor(this@renderStatsGraph, R.color.kitchen_text_secondary))
-                android.view.View.TEXT_ALIGNMENT_CENTER
+                textAlignment = View.TEXT_ALIGNMENT_CENTER
             }
             barWrapper.addView(valueLabel)
         }
 
-        val bar = android.view.View(this).apply {
+        val bar = View(this).apply {
             // Calculate proportional height based on the week's maximum.
             val barHeightDp = (count.toFloat() / maxCount * 120).coerceAtLeast(4f)
-            layoutParams = android.widget.LinearLayout.LayoutParams(
+            layoutParams = LinearLayout.LayoutParams(
                 resources.getDimensionPixelSize(R.dimen.stats_bar_width),
                 (barHeightDp * density).toInt()
             ).apply {
@@ -370,23 +374,23 @@ internal fun MainActivity.renderStatsGraph() {
             background = ContextCompat.getDrawable(this@renderStatsGraph, R.drawable.stats_bar_bg)
             
             // Highlight today's bar in SLP Blue, history in grey.
-            backgroundTintList = android.content.res.ColorStateList.valueOf(
+            backgroundTintList = ColorStateList.valueOf(
                 if (index == dailyCounts.size - 1) ContextCompat.getColor(this@renderStatsGraph, R.color.slp_blue)
                 else ContextCompat.getColor(this@renderStatsGraph, R.color.button_secondary_border)
             )
         }
 
-        val label = android.widget.TextView(this).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+        val label = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             text = when(index) {
                 0 -> "Mon"; 1 -> "Tue"; 2 -> "Wed"; 3 -> "Thu"; 4 -> "Fri"; 5 -> "Sat"; 6 -> "Sun"
                 else -> ""
             }
             textSize = 10f
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             setTextColor(ContextCompat.getColor(this@renderStatsGraph, R.color.kitchen_text_secondary))
         }
 

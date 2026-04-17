@@ -27,5 +27,6 @@ data class MealEntry(
     val documentId: String? = null,
     val schoolName: String? = null,
     val dietaryRequirements: List<String> = emptyList(), // e.g., ["Nut Allergy", "Dairy Free"]
-    var served: Boolean = false                         // True if the kitchen has marked this plate as delivered.
+    var served: Boolean = false,                        // True if the kitchen has marked this plate as delivered.
+    var checkedIn: Boolean = false                      // True if the child has confirmed their presence on the tablet.
 )

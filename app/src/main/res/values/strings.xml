@@ -92,5 +92,14 @@
     <string name="header_prep_dashboard">MEAL PREPARATION DASHBOARD</string>
     <string name="header_service_ongoing">SERVICE ONGOING</string>
     <string name="header_summary_dashboard">TODAY\'S SERVICE DASHBOARD</string>
-    <string name="stats_meal_breakdown_title">TODAY\'S MEAL BREAKDOWN</string>
+    <string name="stats_loaded_at">Meals loaded at: %1$s</string>
+    <string name="stats_prep_time">Prep time: %1$d mins</string>
+    <string name="dietary_label">DIETARY: %1$s</string>
+    <string name="stats_prep_time_value">%1$dm</string>
+    <string name="stats_label_loaded_at">LOADED AT</string>
+    <string name="stats_label_prep_time">PREP TIME</string>
+    <string name="stats_default_value_zero">0</string>
+    <string name="stats_default_value_time">00:00</string>
+    <string name="stats_default_value_percent">100%</string>
+    <string name="stats_meal_breakdown_title">Meal Volume Breakdown</string>
 </resources>

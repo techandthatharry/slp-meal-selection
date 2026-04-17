@@ -3,9 +3,6 @@ package com.techandthat.slpmealselection
 import android.os.Bundle
 import android.view.View
 import android.widget.RadioButton
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import androidx.activity.ComponentActivity
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
@@ -66,6 +63,72 @@ class MainActivity : ComponentActivity() {
     internal var servicePausedByKitchen = false
     internal var showingServiceStats = false
 
+    // Real-time synchronization listener.
+    internal var firestoreListener: com.google.firebase.firestore.ListenerRegistration? = null
+
+    /**
+     * Starts a real-time listener to detect student check-ins from other tablets.
+     * When a check-in is detected, the kitchen's active order is automatically updated.
+     */
+    internal fun startFirestoreListener() {
+        if (firestoreListener != null) return
+        
+        firestoreListener = repository.listenForCheckIns(
+            schoolName = selectedSchool,
+            onUpdate = { records ->
+                // Update the global simulated database with fresh data from Firestore.
+                val mapped = records.map { record ->
+                    val meal = record.mealSelected
+                        ?.takeIf { it.isNotBlank() }
+                        ?: fallbackMealByChild["${record.childName}|${record.className}"]
+                        ?: "Meal not selected"
+                    
+                    MealEntry(
+                        name = record.childName,
+                        clazz = record.className,
+                        meal = meal,
+                        documentId = record.documentId,
+                        schoolName = record.schoolName,
+                        dietaryRequirements = record.dietaryRequirements,
+                        served = record.served,
+                        checkedIn = record.checkedIn
+                    )
+                }
+                
+                simulatedDatabase.clear()
+                simulatedDatabase.addAll(mapped)
+
+                // Logic for the Kitchen Tablet: Automatically pick the next checked-in student as the active order.
+                if (selectedTabletType == TabletType.KITCHEN && serviceStarted && activeOrder == null) {
+                    val nextInQueue = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
+                    if (nextInQueue != null) {
+                        activeOrder = nextInQueue
+                    }
+                }
+
+                renderAppContent()
+            },
+            onFailure = { error ->
+                repository.logErrorToFirebase("FirestoreListener", error, selectedSchool)
+            }
+        )
+    }
+
+    internal fun stopFirestoreListener() {
+        firestoreListener?.remove()
+        firestoreListener = null
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (serviceStarted) startFirestoreListener()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        stopFirestoreListener()
+    }
+
     // Data model for capturing end-of-service summary statistics.
     internal data class ServiceStats(
         val mealsServed: Int,
@@ -124,6 +187,7 @@ class MainActivity : ComponentActivity() {
             servicePausedByKitchen = false
             latestServiceStats = null
             serviceStartedTime = System.currentTimeMillis()
+            startFirestoreListener()
             renderAppContent()
         }
 
@@ -182,6 +246,19 @@ class MainActivity : ComponentActivity() {
         }
 
         binding.checkInSuccessButton.setOnClickListener {
+            val confirmedOrder = activeOrder
+            if (confirmedOrder != null) {
+                // Mark the child as checked in on the backend.
+                repository.markCheckedIn(
+                    entry = confirmedOrder,
+                    onSuccess = {
+                        // Success is reflected via the real-time listener.
+                    },
+                    onFailure = { error ->
+                        repository.logErrorToFirebase("MarkCheckedIn", error, selectedSchool)
+                    }
+                )
+            }
             showWaitingOverlayAfterConfirm = true
             childScreen = ChildScreen.NAME_SELECTION
             renderChildView()

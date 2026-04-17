@@ -254,6 +254,7 @@
                 android:layout_marginHorizontal="16dp"
                 android:adjustViewBounds="true"
                 android:scaleType="fitCenter"
+                android:contentDescription="@string/slp_logo"
                 android:src="@drawable/bloemfontein_logo" />
 
             <LinearLayout
@@ -733,7 +734,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="@font/gotham_ultra"
-                                    android:text="0"
+                                    android:text="@string/stats_default_value_zero"
                                     android:textColor="@color/slp_blue"
                                     android:textSize="32sp" />
                             </LinearLayout>
@@ -774,7 +775,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="@font/gotham_ultra"
-                                    android:text="0"
+                                    android:text="@string/stats_default_value_zero"
                                     android:textColor="@color/kitchen_success"
                                     android:textSize="32sp" />
                             </LinearLayout>
@@ -815,7 +816,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="@font/gotham_ultra"
-                                    android:text="0"
+                                    android:text="@string/stats_default_value_zero"
                                     android:textColor="#9C27B0"
                                     android:textSize="32sp" />
                             </LinearLayout>
@@ -855,7 +856,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="@font/gotham_ultra"
-                                    android:text="100%"
+                                    android:text="@string/stats_default_value_percent"
                                     android:textColor="@color/kitchen_warning"
                                     android:textSize="32sp" />
                             </LinearLayout>
@@ -883,7 +884,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/gotham"
-                                    android:text="LOADED AT"
+                                    android:text="@string/stats_label_loaded_at"
                                     android:textColor="@color/kitchen_text_secondary"
                                     android:textSize="14sp"
                                     android:textAllCaps="true"
@@ -895,7 +896,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="@font/gotham_ultra"
-                                    android:text="00:00"
+                                    android:text="@string/stats_default_value_time"
                                     android:textColor="#FF5722"
                                     android:textSize="32sp" />
                             </LinearLayout>
@@ -923,7 +924,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/gotham"
-                                    android:text="PREP TIME"
+                                    android:text="@string/stats_label_prep_time"
                                     android:textColor="@color/kitchen_text_secondary"
                                     android:textSize="14sp"
                                     android:textAllCaps="true"
@@ -935,7 +936,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="@font/gotham_ultra"
-                                    android:text="0m"
+                                    android:text="@string/stats_default_value_zero"
                                     android:textColor="#795548"
                                     android:textSize="32sp" />
                             </LinearLayout>
