@@ -1,0 +1,21 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.DS_Store
+/build
+**/build/
+/captures
+.externalNativeBuild
+.cxx
+
+# Firebender local chat history
+.idea/firebender/
+.idea/firebender/chat_history.db
+.idea/firebender/chat_history.db-shm
+.idea/firebender/chat_history.db-wal

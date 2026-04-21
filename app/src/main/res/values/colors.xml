@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="slp_blue">#0E76BD</color>
+    <color name="child_green">#2E7D32</color>
+    <color name="child_orange">#EF6C00</color>
+
+    <color name="kitchen_bg">#F2F1ED</color>
+    <color name="kitchen_surface">#FFFFFF</color>
+    <color name="kitchen_header_bg">#0E76BD</color>
+    <color name="kitchen_primary">#0F172A</color>
+    <color name="kitchen_accent">#626060</color>
+    <color name="kitchen_success">#0E76BD</color>
+    <color name="kitchen_warning">#D97706</color>
+    <color name="kitchen_danger">#DC2626</color>
+    <color name="kitchen_text_primary">#323232</color>
+    <color name="kitchen_text_secondary">#6B7280</color>
+    <color name="meal_count_text">#323232</color>
+    <color name="meal_name_text">#323232</color>
+    <color name="meal_prep_cream">#FFFDFC</color>
+    <color name="button_secondary_bg">#FFFFFF</color>
+    <color name="button_secondary_border">#BDBDBD</color>
+    <color name="button_secondary_text">#9E9E9E</color>
+</resources>
