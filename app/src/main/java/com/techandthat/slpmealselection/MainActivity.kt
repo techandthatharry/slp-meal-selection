@@ -63,18 +63,64 @@ class MainActivity : ComponentActivity() {
     internal var servicePausedByKitchen = false
     internal var showingServiceStats = false
 
-    // Real-time synchronization listener.
+    // Real-time synchronization listeners.
     internal var firestoreListener: com.google.firebase.firestore.ListenerRegistration? = null
+    internal var serviceStateListener: com.google.firebase.firestore.ListenerRegistration? = null
+
+    // Handler used to schedule listener reconnection attempts after network failures.
+    internal val reconnectHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /**
+     * Starts a real-time listener on the shared serviceState Firestore document.
+     * The kitchen writes to this document; the child tablet reads it to unlock the UI.
+     * On failure, schedules a retry after 5 seconds.
+     */
+    internal fun startServiceStateListener() {
+        if (serviceStateListener != null) return
+        android.util.Log.d("SLP_SYNC", "Starting service state listener for school: $selectedSchool")
+
+        serviceStateListener = repository.listenForServiceState(
+            schoolName = selectedSchool,
+            onUpdate = { status ->
+                val newStarted = status == "ACTIVE" || status == "PAUSED"
+                val newPaused = status == "PAUSED"
+
+                // Only act if state has actually changed, to avoid spurious re-renders.
+                if (newStarted != serviceStarted || newPaused != servicePausedByKitchen) {
+                    val wasStarted = serviceStarted
+                    serviceStarted = newStarted
+                    servicePausedByKitchen = newPaused
+
+                    // On the child tablet, the records listener lifecycle is driven by service state.
+                    if (!wasStarted && newStarted) startFirestoreListener()
+                    if (wasStarted && !newStarted) stopFirestoreListener()
+
+                    renderAppContent()
+                }
+            },
+            onFailure = { error ->
+                android.util.Log.e("SLP_SYNC", "Service state listener failed, retrying in 5s", error)
+                repository.logErrorToFirebase("ServiceStateListener", error, selectedSchool)
+                serviceStateListener = null
+                reconnectHandler.postDelayed({ startServiceStateListener() }, 5_000L)
+            }
+        )
+    }
+
+    internal fun stopServiceStateListener() {
+        serviceStateListener?.remove()
+        serviceStateListener = null
+    }
 
     /**
      * Starts a real-time listener to detect student check-ins from other tablets.
-     * When a check-in is detected, the kitchen's active order is automatically updated.
+     * Automatically retries after 5 seconds if the connection drops.
      */
     internal fun startFirestoreListener() {
         if (firestoreListener != null) return
-        
+
         android.util.Log.d("SLP_SYNC", "Starting Firestore listener for school: $selectedSchool")
-        
+
         firestoreListener = repository.listenForCheckIns(
             schoolName = selectedSchool,
             onUpdate = { records ->
@@ -85,7 +131,7 @@ class MainActivity : ComponentActivity() {
                         ?.takeIf { it.isNotBlank() }
                         ?: fallbackMealByChild["${record.childName}|${record.className}"]
                         ?: "Meal not selected"
-                    
+
                     MealEntry(
                         name = record.childName,
                         clazz = record.className,
@@ -97,7 +143,7 @@ class MainActivity : ComponentActivity() {
                         checkedIn = record.checkedIn
                     )
                 }
-                
+
                 simulatedDatabase.clear()
                 simulatedDatabase.addAll(mapped)
 
@@ -105,8 +151,13 @@ class MainActivity : ComponentActivity() {
                 renderAppContent()
             },
             onFailure = { error ->
-                android.util.Log.e("SLP_SYNC", "Firestore listener failed", error)
+                android.util.Log.e("SLP_SYNC", "Firestore listener failed, retrying in 5s", error)
                 repository.logErrorToFirebase("FirestoreListener", error, selectedSchool)
+                firestoreListener = null
+                // Only retry if the service is still active — avoids reconnecting after end-of-service.
+                if (serviceStarted) {
+                    reconnectHandler.postDelayed({ startFirestoreListener() }, 5_000L)
+                }
             }
         )
     }
@@ -118,12 +169,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Restart listeners if we're already logged in (e.g., returning from background).
+        if (selectedTabletType != null) startServiceStateListener()
         if (serviceStarted) startFirestoreListener()
     }
 
     override fun onStop() {
         super.onStop()
+        // Cancel any pending reconnect attempts to avoid memory leaks when backgrounded.
+        reconnectHandler.removeCallbacksAndMessages(null)
         stopFirestoreListener()
+        stopServiceStateListener()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        reconnectHandler.removeCallbacksAndMessages(null)
     }
 
     // Data model for capturing end-of-service summary statistics.
@@ -135,9 +196,7 @@ class MainActivity : ComponentActivity() {
         val endedAtLabel: String,
         val mealsLoadedTimeLabel: String,
         val prepDurationMinutes: Int,
-        val mealVolumes: Map<String, Int>,
-        val weekTotal: Int = 0,
-        val monthTotal: Int = 0
+        val mealVolumes: Map<String, Int>
     )
 
     // Timing and analytics state.
@@ -185,6 +244,14 @@ class MainActivity : ComponentActivity() {
             latestServiceStats = null
             serviceStartedTime = System.currentTimeMillis()
             startFirestoreListener()
+            // Persist state to Firestore so the child tablet can react immediately.
+            repository.setServiceState(
+                schoolName = selectedSchool,
+                status = "ACTIVE",
+                onFailure = { error ->
+                    repository.logErrorToFirebase("SetServiceState_Start", error, selectedSchool)
+                }
+            )
             renderAppContent()
         }
 
@@ -193,6 +260,14 @@ class MainActivity : ComponentActivity() {
 
         binding.pauseServiceHeaderButton.setOnClickListener {
             servicePausedByKitchen = !servicePausedByKitchen
+            val newStatus = if (servicePausedByKitchen) "PAUSED" else "ACTIVE"
+            repository.setServiceState(
+                schoolName = selectedSchool,
+                status = newStatus,
+                onFailure = { error ->
+                    repository.logErrorToFirebase("SetServiceState_Pause", error, selectedSchool)
+                }
+            )
             renderAppContent()
         }
 

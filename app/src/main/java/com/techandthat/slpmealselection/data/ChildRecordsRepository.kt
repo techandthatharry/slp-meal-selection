@@ -134,6 +134,7 @@ class ChildRecordsRepository(
     }
 
     // Removes all student meal records for a school (typically called at end-of-day).
+    // Chunks deletes into batches of 400 to stay safely under Firestore's 500-write limit.
     fun deleteAllRecords(
         schoolName: String,
         onSuccess: () -> Unit,
@@ -143,14 +144,30 @@ class ChildRecordsRepository(
             .whereEqualTo("schoolName", schoolName)
             .get()
             .addOnSuccessListener { snapshot ->
-                val batch = firestore.batch()
+                if (snapshot.isEmpty) {
+                    onSuccess()
+                    return@addOnSuccessListener
+                }
 
-                // Queue all documents for deletion in a single batch.
-                snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+                val chunks = snapshot.documents.chunked(400)
+                var completedChunks = 0
+                var hasFailed = false
 
-                batch.commit()
-                    .addOnSuccessListener { onSuccess() }
-                    .addOnFailureListener(onFailure)
+                chunks.forEach { chunk ->
+                    val batch = firestore.batch()
+                    chunk.forEach { doc -> batch.delete(doc.reference) }
+                    batch.commit()
+                        .addOnSuccessListener {
+                            completedChunks++
+                            if (completedChunks == chunks.size && !hasFailed) onSuccess()
+                        }
+                        .addOnFailureListener { error ->
+                            if (!hasFailed) {
+                                hasFailed = true
+                                onFailure(error)
+                            }
+                        }
+                }
             }
             .addOnFailureListener(onFailure)
     }
@@ -167,6 +184,7 @@ class ChildRecordsRepository(
     )
 
     // Synchronizes records from the Arbor API into the local Firestore collection.
+    // Chunks writes into batches of 400 to stay safely under Firestore's 500-write limit.
     fun upsertArborRecords(
         records: List<ArborStudentRecord>,
         onSuccess: () -> Unit,
@@ -177,30 +195,44 @@ class ChildRecordsRepository(
             return
         }
 
-        val batch = firestore.batch()
+        val chunks = records.chunked(400)
+        var completedChunks = 0
+        var hasFailed = false
 
-        // Use merge sets to update existing records or create new ones without overwriting 'served' flags.
-        records.forEach { record ->
-            batch.set(
-                childRecordsCollection.document(record.documentId),
-                mapOf(
-                    "childName" to record.childName,
-                    "className" to record.className,
-                    "schoolName" to record.schoolName,
-                    "source" to record.source,
-                    "mealSelected" to record.mealSelected,
-                    "dietaryRequirements" to record.dietaryRequirements,
-                    "checkedIn" to false,
-                    "served" to false,
-                    "updatedAt" to FieldValue.serverTimestamp()
-                ),
-                com.google.firebase.firestore.SetOptions.merge()
-            )
+        chunks.forEach { chunk ->
+            val batch = firestore.batch()
+
+            // Use merge sets to update existing records or create new ones without overwriting 'served' flags.
+            chunk.forEach { record ->
+                batch.set(
+                    childRecordsCollection.document(record.documentId),
+                    mapOf(
+                        "childName" to record.childName,
+                        "className" to record.className,
+                        "schoolName" to record.schoolName,
+                        "source" to record.source,
+                        "mealSelected" to record.mealSelected,
+                        "dietaryRequirements" to record.dietaryRequirements,
+                        "checkedIn" to false,
+                        "served" to false,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
+            }
+
+            batch.commit()
+                .addOnSuccessListener {
+                    completedChunks++
+                    if (completedChunks == chunks.size && !hasFailed) onSuccess()
+                }
+                .addOnFailureListener { error ->
+                    if (!hasFailed) {
+                        hasFailed = true
+                        onFailure(error)
+                    }
+                }
         }
-
-        batch.commit()
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener(onFailure)
     }
 
     // Updates a student's status as served and queues a billing record for the Arbor sync.
@@ -265,6 +297,42 @@ class ChildRecordsRepository(
         batch.commit()
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener(onFailure)
+    }
+
+    // Writes the current service status ("IDLE", "ACTIVE", "PAUSED") to Firestore so both tablets
+    // share the same source of truth for service state.
+    fun setServiceState(
+        schoolName: String,
+        status: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception) -> Unit = {}
+    ) {
+        firestore.collection("serviceState")
+            .document(schoolName.replace(" ", "_"))
+            .set(mapOf(
+                "status" to status,
+                "updatedAt" to FieldValue.serverTimestamp()
+            ))
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener(onFailure)
+    }
+
+    // Listens to real-time changes in the shared service state document (kitchen controls, child observes).
+    fun listenForServiceState(
+        schoolName: String,
+        onUpdate: (String) -> Unit,
+        onFailure: (Exception) -> Unit
+    ): com.google.firebase.firestore.ListenerRegistration {
+        return firestore.collection("serviceState")
+            .document(schoolName.replace(" ", "_"))
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onFailure(error)
+                    return@addSnapshotListener
+                }
+                val status = snapshot?.getString("status") ?: "IDLE"
+                onUpdate(status)
+            }
     }
 
     // Logs application errors and stack traces to a dedicated Firestore collection for debugging.
