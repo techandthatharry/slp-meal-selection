@@ -37,8 +37,9 @@ internal fun MainActivity.handleLogin() {
     binding.setupContainer.visibility = View.GONE
     binding.appContainer.visibility = View.VISIBLE
 
-    // Bootstrap data loading from Firestore.
+    // Bootstrap data loading and start the cross-tablet state listener.
     authenticateThenLoadRoster()
+    startServiceStateListener()
     renderAppContent()
 }
 
@@ -60,6 +61,11 @@ internal fun MainActivity.showSetupError(message: String) {
 
 // Resets the application state and returns the user to the initial login/setup screen.
 internal fun MainActivity.returnToSetup() {
+    // Stop all listeners and cancel any pending reconnect attempts.
+    reconnectHandler.removeCallbacksAndMessages(null)
+    stopFirestoreListener()
+    stopServiceStateListener()
+
     binding.appContainer.visibility = View.GONE
     binding.setupContainer.visibility = View.VISIBLE
 

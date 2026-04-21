@@ -119,15 +119,22 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                 endedAtLabel = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
                 mealsLoadedTimeLabel = loadedTimeLabel,
                 prepDurationMinutes = prepMins,
-                mealVolumes = mealVolumesMap,
-                weekTotal = 156, // Simulated realistic week total
-                monthTotal = 684 // Simulated realistic month total
+                mealVolumes = mealVolumesMap
             )
 
             // Clear the Firestore collection for the school after a successful (or soft-failed) sync.
             repository.deleteAllRecords(
                 schoolName = selectedSchool,
                 onSuccess = {
+                    // Reset shared service state so the child tablet returns to the idle/locked screen.
+                    repository.setServiceState(
+                        schoolName = selectedSchool,
+                        status = "IDLE",
+                        onFailure = { error ->
+                            repository.logErrorToFirebase("SetServiceState_End", error, selectedSchool)
+                        }
+                    )
+
                     latestServiceStats = statsAtEnd
                     simulatedDatabase.clear()
                     activeOrder = null
@@ -140,7 +147,7 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                     childScreen = ChildScreen.IDLE
                     isLoadingMeals = false
                     firebaseStatusMessage = null
-                    
+
                     // Switch UI to the summary statistics dashboard.
                     renderAppContent()
                     Toast.makeText(
