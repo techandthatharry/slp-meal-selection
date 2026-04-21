@@ -37,53 +37,37 @@ internal fun MainActivity.renderChildView() {
     binding.childContent.visibility = View.VISIBLE
     
     // Control visibility of base titles depending on whether a meal selection session is active.
-    binding.contentTitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
-    binding.contentSubtitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
+    binding.contentTitle.visibility = View.GONE
+    binding.contentSubtitle.visibility = View.GONE
 
     // Safety Gate: Do not allow meal selection if the kitchen has paused or hasn't started service.
     if (!serviceStarted || servicePausedByKitchen) {
-        mealTimeStarted = false
-        selectedClass = null
-        activeOrder = null
-        showWaitingOverlayAfterConfirm = false
-        childScreen = ChildScreen.IDLE
-        
-        binding.childServiceGateText.text = if (servicePausedByKitchen) {
-            getString(R.string.service_status_paused)
-        } else {
-            getString(R.string.child_waiting_for_service)
-        }
-        binding.childServiceGateText.setTextColor(
-            ContextCompat.getColor(this, android.R.color.holo_red_dark)
-        )
-        
-        binding.contentSubtitle.visibility = View.GONE
+        binding.contentSubtitle.text = getString(R.string.child_waiting_for_service)
+        binding.contentSubtitle.visibility = View.VISIBLE
         binding.startMealTimeButton.visibility = View.GONE
         binding.childStepContainer.visibility = View.GONE
         binding.waitingOverlay.visibility = View.GONE
         return
     }
 
-    // Active Service State: Display start button if not already in the selection flow.
-    binding.childServiceGateText.text = getString(R.string.child_service_live)
-    binding.childServiceGateText.setTextColor(ContextCompat.getColor(this, R.color.child_green))
-    binding.contentSubtitle.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
-    binding.childServiceGateText.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
-    binding.startMealTimeButton.visibility = if (mealTimeStarted) View.GONE else View.VISIBLE
-
-    // Transition to selection steps if session is started.
-    if (!mealTimeStarted) {
-        childScreen = ChildScreen.IDLE
-        binding.contentTitle.visibility = View.VISIBLE
-        binding.contentSubtitle.visibility = View.VISIBLE
-        binding.childStepContainer.visibility = View.GONE
-        binding.waitingOverlay.visibility = View.GONE
-        return
-    }
+    // Active Service State: Ensure mealTimeStarted is true and we're in a selection step.
+    mealTimeStarted = true
+    binding.contentSubtitle.visibility = View.GONE
+    binding.startMealTimeButton.visibility = View.GONE
 
     binding.childStepContainer.visibility = View.VISIBLE
 
+    // Handle the "Please wait" overlay.
+    // This blocks the screen after the child confirms "I'M HERE" until the kitchen marks it as served.
+    val isWaitingForKitchen = showWaitingOverlayAfterConfirm && activeOrder != null
+    binding.waitingOverlay.visibility = if (isWaitingForKitchen) View.VISIBLE else View.GONE
+    
+    // If waiting for kitchen, we don't need to render the underlying steps again
+    if (isWaitingForKitchen) return
+
     // Navigate between the different child selection screen states.
+    // IDLE is treated identically to CLASS_SELECTION — merging them eliminates the
+    // recursive renderChildView() call that caused a visible flicker on first entry.
     when (childScreen) {
         ChildScreen.IDLE, ChildScreen.CLASS_SELECTION -> {
             childScreen = ChildScreen.CLASS_SELECTION
@@ -113,26 +97,27 @@ internal fun MainActivity.renderChildView() {
                     renderChildView()
                 },
                 onChildSelected = { child ->
+                    // Set active order LOCALLY
                     activeOrder = child
-                    // Notify the kitchen immediately via Firestore.
+                    childScreen = ChildScreen.SUCCESS
+                    
+                    // Notify the kitchen via Firestore.
                     repository.markCheckedIn(
                         entry = child,
-                        onSuccess = { /* Success reflected via listener */ },
+                        onSuccess = { 
+                            android.util.Log.d("SLP_SYNC", "Checked in ${child.name}")
+                        },
                         onFailure = { error ->
                             repository.logErrorToFirebase("MarkCheckedIn_Auto", error, selectedSchool)
                         }
                     )
-                    childScreen = ChildScreen.SUCCESS
-                    renderAppContent()
+                    renderChildView()
                 }
             )
         }
 
-        ChildScreen.SUCCESS -> renderSuccessStep(binding, activeOrder)
+        ChildScreen.SUCCESS -> {
+            renderSuccessStep(binding, activeOrder)
+        }
     }
-
-    // Handle the "Please wait" overlay that blocks the child screen while the kitchen prepares the plate.
-    val shouldShowOverlay = showWaitingOverlayAfterConfirm && activeOrder != null &&
-        (childScreen == ChildScreen.CLASS_SELECTION || childScreen == ChildScreen.NAME_SELECTION)
-    binding.waitingOverlay.visibility = if (shouldShowOverlay) View.VISIBLE else View.GONE
 }

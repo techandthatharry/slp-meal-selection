@@ -138,11 +138,17 @@ internal fun MainActivity.renderKitchenView() {
 
     // Handle loading state overlays for network operations.
     if (isLoadingMeals) {
-        binding.prepLoadingText.visibility = View.VISIBLE
         binding.prepLoadingProgress.visibility = View.VISIBLE
         binding.prepLoadingProgress.isIndeterminate = true
+        
+        // Ensure the correct text is displayed based on the operation context.
+        if (binding.prepLoadingText.text.isNullOrBlank()) {
+             binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
+        }
+        binding.prepLoadingText.visibility = View.VISIBLE
     } else {
         binding.prepLoadingText.visibility = View.GONE
+        binding.prepLoadingText.text = ""
         binding.prepLoadingProgress.visibility = View.GONE
     }
 
@@ -203,13 +209,17 @@ internal fun MainActivity.renderKitchenView() {
         binding.serviceStatsCard.visibility = View.GONE
     }
 
-    // Re-order layout sections dynamically so the "Active Order" appears at the top when live.
-    if (hasCheckInStarted) {
+    // Re-order layout sections so the "Active Order" appears at the top when live.
+    // Guard with an index check so removeView/addView (which trigger a full layout pass)
+    // only fire when the order actually needs to change, not on every render.
+    val orderCardCurrentlyAtTop =
+        binding.kitchenContent.indexOfChild(binding.kitchenOrderContainer) == 0
+    if (hasCheckInStarted && !orderCardCurrentlyAtTop) {
         binding.kitchenContent.removeView(binding.kitchenOrderContainer)
         binding.kitchenContent.addView(binding.kitchenOrderContainer, 0)
         binding.kitchenContent.removeView(binding.prepAndLoadRow)
         binding.kitchenContent.addView(binding.prepAndLoadRow)
-    } else {
+    } else if (!hasCheckInStarted && orderCardCurrentlyAtTop) {
         binding.kitchenContent.removeView(binding.prepAndLoadRow)
         binding.kitchenContent.addView(binding.prepAndLoadRow, 0)
         binding.kitchenContent.removeView(binding.kitchenOrderContainer)
