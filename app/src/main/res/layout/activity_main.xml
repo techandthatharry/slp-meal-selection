@@ -465,7 +465,7 @@
                                     android:indeterminate="false"
                                     android:max="100"
                                     android:progress="0"
-                                    android:progressTint="@color/kitchen_success"
+                                    android:progressTint="@color/kitchen_warning"
                                     android:progressBackgroundTint="@color/button_secondary_border"
                                     android:visibility="gone" />
                             </LinearLayout>
@@ -661,11 +661,12 @@
                             android:id="@+id/kitchenOrderDietaryRequirements"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="4dp"
                             android:fontFamily="@font/gotham"
                             android:gravity="center"
                             android:textColor="@color/kitchen_danger"
-                            android:textSize="20sp"
+                            android:textSize="32sp"
                             android:textStyle="bold"
                             android:visibility="gone" />
 
