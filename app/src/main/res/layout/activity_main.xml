@@ -462,9 +462,9 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="16dp"
                                     android:layout_marginTop="10dp"
-                                    android:indeterminate="false"
-                                    android:max="100"
-                                    android:progress="0"
+                                    android:indeterminate="true"
+                                    android:indeterminateTint="@color/kitchen_warning"
+                                    android:indeterminateTintMode="src_in"
                                     android:progressTint="@color/kitchen_warning"
                                     android:progressBackgroundTint="@color/button_secondary_border"
                                     android:visibility="gone" />

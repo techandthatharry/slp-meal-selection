@@ -139,17 +139,13 @@ internal fun MainActivity.renderKitchenView() {
     // Handle loading state overlays for network operations.
     if (isLoadingMeals) {
         binding.prepLoadingProgress.visibility = View.VISIBLE
-        binding.prepLoadingProgress.isIndeterminate = true
-        
-        // Ensure the correct text is displayed based on the operation context.
-        if (binding.prepLoadingText.text.isNullOrBlank()) {
-             binding.prepLoadingText.text = getString(R.string.loading_todays_meals)
-        }
+        binding.prepLoadingText.text = loadingMessage ?: getString(R.string.loading_todays_meals)
         binding.prepLoadingText.visibility = View.VISIBLE
     } else {
         binding.prepLoadingText.visibility = View.GONE
         binding.prepLoadingText.text = ""
         binding.prepLoadingProgress.visibility = View.GONE
+        loadingMessage = null
     }
 
     // Secondary navigation buttons for resetting the app or ending the day.

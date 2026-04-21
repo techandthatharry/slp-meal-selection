@@ -18,8 +18,8 @@ import java.util.Locale
 internal fun MainActivity.endServiceAndDeleteRecords() {
     isLoadingMeals = true
     firebaseStatusMessage = null
-    binding.prepLoadingText.text = getString(R.string.uploading_to_arbor)
-    
+    loadingMessage = getString(R.string.uploading_to_arbor)
+
     // Refresh the UI to show the loading state.
     renderKitchenView()
     

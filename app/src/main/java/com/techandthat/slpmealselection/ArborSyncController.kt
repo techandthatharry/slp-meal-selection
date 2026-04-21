@@ -16,8 +16,8 @@ import java.util.TimeZone
 // Initiates the process of fetching today's meal choices from the Arbor MIS.
 internal fun MainActivity.fetchStudentsFromArbor() {
     isLoadingMeals = true
-    firebaseStatusMessage = getString(R.string.loading_todays_meals)
-    
+    loadingMessage = getString(R.string.loading_todays_meals)
+
     // Update the UI to reflect the loading state.
     renderKitchenView()
     

@@ -60,6 +60,8 @@ class MainActivity : ComponentActivity() {
     internal var showWaitingOverlayAfterConfirm = false
     internal var firebaseStatusMessage: String? = null
     internal var isLoadingMeals = false
+    // Explicit message shown in the loading bar — set by each operation before triggering a render.
+    internal var loadingMessage: String? = null
     internal var servicePausedByKitchen = false
     internal var showingServiceStats = false
 
@@ -94,6 +96,15 @@ class MainActivity : ComponentActivity() {
                     // On the child tablet, the records listener lifecycle is driven by service state.
                     if (!wasStarted && newStarted) startFirestoreListener()
                     if (wasStarted && !newStarted) stopFirestoreListener()
+
+                    // Auto-start the child session if service is live.
+                    if (selectedTabletType == TabletType.CHILD && newStarted) {
+                        android.util.Log.d("SLP_SYNC", "Ensuring child session is active.")
+                        mealTimeStarted = true
+                        if (childScreen == ChildScreen.IDLE) {
+                            childScreen = if (selectedClass.isNullOrBlank()) ChildScreen.CLASS_SELECTION else ChildScreen.NAME_SELECTION
+                        }
+                    }
 
                     renderAppContent()
                 }
@@ -297,10 +308,16 @@ class MainActivity : ComponentActivity() {
         // Child Mode Navigation.
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
-            selectedClass = null
+            // We NO LONGER reset selectedClass = null here. 
+            // This allows a single-tablet user to switch roles and come back 
+            // to the same class list they were working on.
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
-            childScreen = ChildScreen.CLASS_SELECTION
+            childScreen = if (selectedClass.isNullOrBlank()) {
+                ChildScreen.CLASS_SELECTION
+            } else {
+                ChildScreen.NAME_SELECTION
+            }
             renderChildView()
         }
 
@@ -372,23 +389,53 @@ class MainActivity : ComponentActivity() {
 
     // High-level UI dispatcher that switches between tablet mode views.
     internal fun renderAppContent() {
-        // Automatically pick the next checked-in student for the kitchen if available.
-        if (selectedTabletType == TabletType.KITCHEN && serviceStarted && activeOrder == null) {
-            activeOrder = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
-        }
-
-        // Automatically clear the waiting overlay on the child tablet if the order has been served.
-        if (selectedTabletType == TabletType.CHILD && activeOrder != null) {
-            val currentOrderInDb = simulatedDatabase.find { it.documentId == activeOrder?.documentId }
-            if (currentOrderInDb?.served == true) {
-                activeOrder = null
-                showWaitingOverlayAfterConfirm = false
-            }
-        }
+        android.util.Log.d("SLP_SYNC", "renderAppContent: type=$selectedTabletType, service=$serviceStarted, mealStarted=$mealTimeStarted, screen=$childScreen, order=${activeOrder?.name}")
 
         when (selectedTabletType) {
-            TabletType.KITCHEN -> renderKitchenView()
-            TabletType.CHILD -> renderChildView()
+            TabletType.KITCHEN -> {
+                // Kitchen logic: if service started and no order is active, try to pick one up
+                if (serviceStarted && activeOrder == null) {
+                    val nextOrder = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
+                    if (nextOrder != null) {
+                        android.util.Log.d("SLP_SYNC", "Kitchen auto-picked next order: ${nextOrder.name}")
+                        activeOrder = nextOrder
+                    }
+                }
+                renderKitchenView()
+            }
+            TabletType.CHILD -> {
+                // Child Tablet: Automatic State Recovery and Overlay Management.
+                if (serviceStarted && !servicePausedByKitchen) {
+                    mealTimeStarted = true
+                    if (childScreen == ChildScreen.IDLE) {
+                        childScreen = if (selectedClass.isNullOrBlank()) ChildScreen.CLASS_SELECTION else ChildScreen.NAME_SELECTION
+                    }
+                }
+
+                if (mealTimeStarted) {
+                    // Recovery: If we have an activeOrder locally, check if it was served in the DB.
+                    if (activeOrder != null) {
+                        val currentOrderInDb = simulatedDatabase.find { it.documentId == activeOrder?.documentId }
+                        if (currentOrderInDb?.served == true) {
+                            android.util.Log.d("SLP_SYNC", "Detected order served for: ${activeOrder?.name}. Clearing overlay.")
+                            activeOrder = null
+                            showWaitingOverlayAfterConfirm = false
+                            childScreen = if (!selectedClass.isNullOrBlank()) ChildScreen.NAME_SELECTION else ChildScreen.CLASS_SELECTION
+                        }
+                    } 
+                    // Recovery: If we DON'T have a local activeOrder but someone from this session is checked-in but not served.
+                    else if (showWaitingOverlayAfterConfirm) {
+                         val pendingOrder = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
+                         if (pendingOrder != null) {
+                             android.util.Log.d("SLP_SYNC", "Recovered pending order for child: ${pendingOrder.name}")
+                             activeOrder = pendingOrder
+                         } else {
+                             showWaitingOverlayAfterConfirm = false
+                         }
+                    }
+                }
+                renderChildView()
+            }
             null -> Unit
         }
     }
