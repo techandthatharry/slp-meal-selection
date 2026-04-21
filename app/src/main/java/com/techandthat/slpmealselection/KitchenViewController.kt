@@ -238,10 +238,11 @@ internal fun MainActivity.renderServiceStatsView() {
         // Populate the 6 summary cards with session data.
         binding.statsTodayValue.text = stats.mealsServed.toString()
         
-        binding.statsWeekValue.text = stats.weekTotal.toString()
+        // Historical totals are not yet stored — display a neutral placeholder.
+        binding.statsWeekValue.text = "—"
         binding.statsWeekLabel.text = getString(R.string.stats_week)
-        
-        binding.statsMonthValue.text = stats.monthTotal.toString()
+
+        binding.statsMonthValue.text = "—"
         binding.statsMonthLabel.text = getString(R.string.stats_month)
         
         binding.statsLoadedAtValue.text = stats.mealsLoadedTimeLabel
@@ -331,24 +332,29 @@ private fun MainActivity.renderMealVolumeBars(volumes: Map<String, Int>) {
     }
 }
 
-// Dynamically builds the weekly performance graph at the bottom of the summary dashboard.
+// Renders the weekly trends graph area. Historical data is not yet persisted, so this
+// shows only today's real count alongside an explanatory placeholder for prior days.
 internal fun MainActivity.renderStatsGraph() {
     binding.statsGraphContainer.removeAllViews()
-    
-    // Provide a mix of mock data for history and real data for today.
-    val dailyCounts = listOf(42, 38, 45, 41, 39, 0, latestServiceStats?.mealsServed ?: 0)
-    val maxCount = dailyCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val todayCount = latestServiceStats?.mealsServed ?: 0
     val density = resources.displayMetrics.density
 
-    dailyCounts.forEachIndexed { index, count ->
+    // Show one real bar for today and greyed-out placeholders for Mon–Fri history.
+    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Today")
+    val counts = listOf(0, 0, 0, 0, 0, todayCount)
+    val maxCount = counts.maxOrNull()?.coerceAtLeast(1) ?: 1
+
+    days.forEachIndexed { index, dayLabel ->
+        val count = counts[index]
+        val isToday = index == days.lastIndex
+
         val barWrapper = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
 
-        // Add numerical value label above each bar.
-        if (count > 0) {
+        if (isToday && count > 0) {
             val valueLabel = TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -363,8 +369,11 @@ internal fun MainActivity.renderStatsGraph() {
         }
 
         val bar = View(this).apply {
-            // Calculate proportional height based on the week's maximum.
-            val barHeightDp = (count.toFloat() / maxCount * 120).coerceAtLeast(4f)
+            val barHeightDp = if (isToday && count > 0) {
+                (count.toFloat() / maxCount * 120).coerceAtLeast(4f)
+            } else {
+                4f // Flat placeholder bar for days without data.
+            }
             layoutParams = LinearLayout.LayoutParams(
                 resources.getDimensionPixelSize(R.dimen.stats_bar_width),
                 (barHeightDp * density).toInt()
@@ -373,10 +382,8 @@ internal fun MainActivity.renderStatsGraph() {
                 bottomMargin = (4 * density).toInt()
             }
             background = ContextCompat.getDrawable(this@renderStatsGraph, R.drawable.stats_bar_bg)
-            
-            // Highlight today's bar in SLP Blue, history in grey.
             backgroundTintList = ColorStateList.valueOf(
-                if (index == dailyCounts.size - 1) ContextCompat.getColor(this@renderStatsGraph, R.color.slp_blue)
+                if (isToday) ContextCompat.getColor(this@renderStatsGraph, R.color.slp_blue)
                 else ContextCompat.getColor(this@renderStatsGraph, R.color.button_secondary_border)
             )
         }
@@ -386,10 +393,7 @@ internal fun MainActivity.renderStatsGraph() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
-            text = when(index) {
-                0 -> "Mon"; 1 -> "Tue"; 2 -> "Wed"; 3 -> "Thu"; 4 -> "Fri"; 5 -> "Sat"; 6 -> "Sun"
-                else -> ""
-            }
+            text = dayLabel
             textSize = 10f
             gravity = Gravity.CENTER
             setTextColor(ContextCompat.getColor(this@renderStatsGraph, R.color.kitchen_text_secondary))
