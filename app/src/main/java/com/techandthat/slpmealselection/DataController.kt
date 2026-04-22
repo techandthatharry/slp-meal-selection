@@ -51,7 +51,7 @@ internal fun MainActivity.loadChildRecordsFromFirestore() {
             val mapped = records.map { record ->
                 val meal = record.mealSelected
                     ?.takeIf { it.isNotBlank() }
-                    ?: fallbackMealByChild["${record.childName}|${record.className}"]
+                    ?: fallbackMealByStudent["${record.childName}|${record.className}"]
                     ?: "Meal not selected"
                 MealEntry(
                     name = record.childName,

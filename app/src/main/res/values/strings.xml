@@ -7,7 +7,7 @@
     <string name="select_school_prompt">What school do you want to open?</string>
     <string name="select_tablet_type">Select tablet type</string>
     <string name="kitchen_side_tablet">Kitchen based tablet</string>
-    <string name="child_facing_tablet">Child facing tablet</string>
+    <string name="child_facing_tablet">Student facing tablet</string>
     <string name="username_label">Username</string>
     <string name="password_label">Password</string>
     <string name="username_hint">Enter username</string>
@@ -19,8 +19,8 @@
     <string name="school_selected">School: %1$s</string>
     <string name="change_school">Change school</string>
     <string name="kitchen_side">Kitchen Side</string>
-    <string name="child_facing">Child Facing</string>
-    <string name="child_tablet_mode">Child tablet mode</string>
+    <string name="child_facing">Student Facing</string>
+    <string name="child_tablet_mode">Student tablet mode</string>
     <string name="kitchen_dashboard_title">Meal Preparation Dashboard</string>
     <string name="todays_service_stats_title">Today\'s Service Stats</string>
     <string name="stats_today">meals served today</string>
@@ -42,7 +42,7 @@
     <string name="start_service">Start Service</string>
     <string name="end_service">End today’s service</string>
     <string name="confirm_end_service_title">End service?</string>
-    <string name="confirm_end_service_message">This will delete all child check-in records (name, class, school) for today. Continue?</string>
+    <string name="confirm_end_service_message">This will delete all student check-in records (name, class, school) for today. Continue?</string>
     <string name="cancel">Cancel</string>
     <string name="service_reset_done">Service ended and today’s records were deleted.</string>
     <string name="firebase_seed_failed">Could not upload dummy roster to Firebase.</string>
@@ -52,10 +52,10 @@
     <string name="firebase_load_failed_with_reason">Could not load roster from Firebase: %1$s</string>
     <string name="firebase_delete_failed_with_reason">Could not delete today’s Firebase records: %1$s</string>
     <string name="firebase_auth_failed_with_reason">Could not authenticate with Firebase: %1$s</string>
-    <string name="service_status_started">Waiting for a child to check in</string>
-    <string name="service_status_not_started">Service not started. Press Start Service to enable child check-in.</string>
+    <string name="service_status_started">Waiting for a student to check in</string>
+    <string name="service_status_not_started">Service not started. Press Start Service to enable student check-in.</string>
     <string name="child_waiting_for_service">Waiting for kitchen to start service.</string>
-    <string name="child_service_live">Service is live — children can check in.</string>
+    <string name="child_service_live">Service is live — students can check in.</string>
     <string name="start_meal_time">Start meal time</string>
     <string name="select_name_for_class">Select your name from %1$s</string>
     <string name="back_to_classes">Select different class</string>
@@ -76,7 +76,7 @@
     <string name="reload_meals_message">Are you sure you want to reload today’s meals?</string>
     <string name="service_status_ready_to_load">Press Load today’s meals to begin.</string>
     <string name="service_status_ready_to_start">Press the Start Service button when you are ready to serve meals.</string>
-    <string name="service_status_paused">Service paused. Child check-in is temporarily disabled.</string>
+    <string name="service_status_paused">Service paused. Student check-in is temporarily disabled.</string>
     <string name="child_success_button_meal">%1$s\n%2$s</string>
     <string name="pause_service_button_with_icon">Pause service</string>
     <string name="resume_service_button_with_icon">Resume service</string>

@@ -2,7 +2,7 @@ package com.techandthat.slpmealselection
 
 import android.view.View
 import androidx.appcompat.app.AlertDialog
-import com.techandthat.slpmealselection.model.ChildScreen
+import com.techandthat.slpmealselection.model.StudentScreen
 import com.techandthat.slpmealselection.model.TabletType
 
 /**
@@ -50,7 +50,7 @@ internal fun isCredentialValid(
     password: String
 ): Boolean = when (tabletType) {
     TabletType.KITCHEN -> username == "k" && password == "k"
-    TabletType.CHILD -> username == "c" && password == "c"
+    TabletType.STUDENT -> username == "c" && password == "c"
 }
 
 // Displays a validation error message on the setup screen.
@@ -81,7 +81,7 @@ internal fun MainActivity.returnToSetup() {
     showWaitingOverlayAfterConfirm = false
     selectedClass = null
     mealTimeStarted = false
-    childScreen = ChildScreen.IDLE
+    studentScreen = StudentScreen.IDLE
 }
 
 // Displays a confirmation prompt before ending the service and initiating the Arbor sync.

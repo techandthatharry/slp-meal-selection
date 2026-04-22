@@ -102,7 +102,7 @@ fun renderNameSelectionStep(
     activeOrder: MealEntry?,
     showWaitingOverlayAfterConfirm: Boolean,
     onMissingClass: () -> Unit,
-    onChildSelected: (MealEntry) -> Unit
+    onStudentSelected: (MealEntry) -> Unit
 ) {
     // Toggle container visibilities to show the name selection step.
     binding.classSelectionContainer.visibility = android.view.View.GONE
@@ -122,14 +122,14 @@ fun renderNameSelectionStep(
     }
 
     // Filter to find unserved students within the selected class.
-    val children = simulatedDatabase.filter { !it.served && it.clazz == selectedClass }
+    val students = simulatedDatabase.filter { !it.served && it.clazz == selectedClass }
 
     // Calculate dynamic heights for touch-friendly buttons.
     val containerHeight = binding.childStepContainer.measuredHeight.takeIf { it > 0 }
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.nameSelectionContainer.measuredHeight.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
-    val childButtonHeight = (containerHeight / 6).coerceAtMost(180)
+    val studentButtonHeight = (containerHeight / 6).coerceAtMost(180)
 
     val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
     val density = context.resources.displayMetrics.density
@@ -138,12 +138,12 @@ fun renderNameSelectionStep(
     val primaryTextColor = ContextCompat.getColor(context, R.color.white)
 
     // Add a button for each student, displaying their name and chosen meal if available.
-    children.forEach { child ->
-        val mealText = child.meal.takeIf {
+    students.forEach { student ->
+        val mealText = student.meal.takeIf {
             it.isNotBlank() && it != "Not selected"
         }
         val icon = if (mealText != null) mealIconFor(mealText) else ""
-        val label = if (mealText != null) "${child.name}  $icon $mealText" else child.name
+        val label = if (mealText != null) "${student.name}  $icon $mealText" else student.name
 
         val button = MaterialButton(context).apply {
             text = label
@@ -156,14 +156,13 @@ fun renderNameSelectionStep(
             cornerRadius = cornerRadiusPx
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                childButtonHeight
+                studentButtonHeight
             ).apply {
                 topMargin = 12
             }
             setOnClickListener {
-                // Trigger the "Active Order" state for the kitchen.
                 if (activeOrder == null && !showWaitingOverlayAfterConfirm) {
-                    onChildSelected(child)
+                    onStudentSelected(student)
                 }
             }
         }

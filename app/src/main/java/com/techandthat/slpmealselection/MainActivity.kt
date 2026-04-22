@@ -6,7 +6,7 @@ import android.widget.RadioButton
 import androidx.activity.ComponentActivity
 import com.techandthat.slpmealselection.data.ChildRecordsRepository
 import com.techandthat.slpmealselection.databinding.ActivityMainBinding
-import com.techandthat.slpmealselection.model.ChildScreen
+import com.techandthat.slpmealselection.model.StudentScreen
 import com.techandthat.slpmealselection.model.MealEntry
 import com.techandthat.slpmealselection.model.TabletType
 import com.techandthat.slpmealselection.network.ArborSyncService
@@ -19,7 +19,7 @@ import com.techandthat.slpmealselection.ui.showSplashThenSetup
 
 /**
  * The primary activity and entry point for the SLP Meal Selection application.
- * This class coordinates the setup, kitchen, and child tablet workflows.
+ * This class coordinates the setup, kitchen, and student tablet workflows.
  * It manages the global application state and delegates UI rendering to specialized controllers.
  */
 class MainActivity : ComponentActivity() {
@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
     )
 
     // In-memory state management for the current session.
-    internal val fallbackMealByChild = initialDummyData.associate { "${it.name}|${it.clazz}" to it.meal }
+    internal val fallbackMealByStudent = initialDummyData.associate { "${it.name}|${it.clazz}" to it.meal }
     internal val simulatedDatabase = mutableListOf<MealEntry>()
 
     // View state flags and session variables.
@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
     internal var serviceStarted = false
     internal var mealTimeStarted = false
     internal var selectedClass: String? = null
-    internal var childScreen: ChildScreen = ChildScreen.IDLE
+    internal var studentScreen: StudentScreen = StudentScreen.IDLE
     internal var activeOrder: MealEntry? = null
     internal var showWaitingOverlayAfterConfirm = false
     internal var firebaseStatusMessage: String? = null
@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Starts a real-time listener on the shared serviceState Firestore document.
-     * The kitchen writes to this document; the child tablet reads it to unlock the UI.
+     * The kitchen writes to this document; the student tablet reads it to unlock the UI.
      * On failure, schedules a retry after 5 seconds.
      */
     internal fun startServiceStateListener() {
@@ -97,12 +97,12 @@ class MainActivity : ComponentActivity() {
                     if (!wasStarted && newStarted) startFirestoreListener()
                     if (wasStarted && !newStarted) stopFirestoreListener()
 
-                    // Auto-start the child session if service is live.
-                    if (selectedTabletType == TabletType.CHILD && newStarted) {
-                        android.util.Log.d("SLP_SYNC", "Ensuring child session is active.")
+                    // Auto-start the student session if service is live.
+                    if (selectedTabletType == TabletType.STUDENT && newStarted) {
+                        android.util.Log.d("SLP_SYNC", "Ensuring student session is active.")
                         mealTimeStarted = true
-                        if (childScreen == ChildScreen.IDLE) {
-                            childScreen = if (selectedClass.isNullOrBlank()) ChildScreen.CLASS_SELECTION else ChildScreen.NAME_SELECTION
+                        if (studentScreen == StudentScreen.IDLE) {
+                            studentScreen = if (selectedClass.isNullOrBlank()) StudentScreen.CLASS_SELECTION else StudentScreen.NAME_SELECTION
                         }
                     }
 
@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
                 val mapped = records.map { record ->
                     val meal = record.mealSelected
                         ?.takeIf { it.isNotBlank() }
-                        ?: fallbackMealByChild["${record.childName}|${record.className}"]
+                        ?: fallbackMealByStudent["${record.childName}|${record.className}"]
                         ?: "Meal not selected"
 
                     MealEntry(
@@ -305,39 +305,36 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Child Mode Navigation.
+        // Student Mode Navigation.
         binding.startMealTimeButton.setOnClickListener {
             mealTimeStarted = true
-            // We NO LONGER reset selectedClass = null here. 
-            // This allows a single-tablet user to switch roles and come back 
-            // to the same class list they were working on.
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
-            childScreen = if (selectedClass.isNullOrBlank()) {
-                ChildScreen.CLASS_SELECTION
+            studentScreen = if (selectedClass.isNullOrBlank()) {
+                StudentScreen.CLASS_SELECTION
             } else {
-                ChildScreen.NAME_SELECTION
+                StudentScreen.NAME_SELECTION
             }
-            renderChildView()
+            renderStudentView()
         }
 
         binding.backToClassesButton.setOnClickListener {
             selectedClass = null
-            childScreen = ChildScreen.CLASS_SELECTION
-            renderChildView()
+            studentScreen = StudentScreen.CLASS_SELECTION
+            renderStudentView()
         }
 
         binding.oopsButton.setOnClickListener {
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
-            childScreen = ChildScreen.NAME_SELECTION
-            renderChildView()
+            studentScreen = StudentScreen.NAME_SELECTION
+            renderStudentView()
         }
 
         binding.checkInSuccessButton.setOnClickListener {
             showWaitingOverlayAfterConfirm = true
-            childScreen = ChildScreen.NAME_SELECTION
-            renderChildView()
+            studentScreen = StudentScreen.NAME_SELECTION
+            renderStudentView()
         }
 
         // Kitchen Order Fulfillment.
@@ -348,12 +345,12 @@ class MainActivity : ComponentActivity() {
             setMealServedLocally(servedEntry, served = true)
             activeOrder = null
             showWaitingOverlayAfterConfirm = false
-            childScreen = if (selectedClass.isNullOrBlank()) {
-                ChildScreen.CLASS_SELECTION
+            studentScreen = if (selectedClass.isNullOrBlank()) {
+                StudentScreen.CLASS_SELECTION
             } else {
-                ChildScreen.NAME_SELECTION
+                StudentScreen.NAME_SELECTION
             }
-            
+
             // Trigger high-level dispatcher to auto-pickup next student if available.
             renderAppContent()
 
@@ -389,11 +386,11 @@ class MainActivity : ComponentActivity() {
 
     // High-level UI dispatcher that switches between tablet mode views.
     internal fun renderAppContent() {
-        android.util.Log.d("SLP_SYNC", "renderAppContent: type=$selectedTabletType, service=$serviceStarted, mealStarted=$mealTimeStarted, screen=$childScreen, order=${activeOrder?.name}")
+        android.util.Log.d("SLP_SYNC", "renderAppContent: type=$selectedTabletType, service=$serviceStarted, mealStarted=$mealTimeStarted, screen=$studentScreen, order=${activeOrder?.name}")
 
         when (selectedTabletType) {
             TabletType.KITCHEN -> {
-                // Kitchen logic: if service started and no order is active, try to pick one up
+                // Kitchen logic: if service started and no order is active, try to pick one up.
                 if (serviceStarted && activeOrder == null) {
                     val nextOrder = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
                     if (nextOrder != null) {
@@ -403,12 +400,12 @@ class MainActivity : ComponentActivity() {
                 }
                 renderKitchenView()
             }
-            TabletType.CHILD -> {
-                // Child Tablet: Automatic State Recovery and Overlay Management.
+            TabletType.STUDENT -> {
+                // Student Tablet: Automatic State Recovery and Overlay Management.
                 if (serviceStarted && !servicePausedByKitchen) {
                     mealTimeStarted = true
-                    if (childScreen == ChildScreen.IDLE) {
-                        childScreen = if (selectedClass.isNullOrBlank()) ChildScreen.CLASS_SELECTION else ChildScreen.NAME_SELECTION
+                    if (studentScreen == StudentScreen.IDLE) {
+                        studentScreen = if (selectedClass.isNullOrBlank()) StudentScreen.CLASS_SELECTION else StudentScreen.NAME_SELECTION
                     }
                 }
 
@@ -420,21 +417,21 @@ class MainActivity : ComponentActivity() {
                             android.util.Log.d("SLP_SYNC", "Detected order served for: ${activeOrder?.name}. Clearing overlay.")
                             activeOrder = null
                             showWaitingOverlayAfterConfirm = false
-                            childScreen = if (!selectedClass.isNullOrBlank()) ChildScreen.NAME_SELECTION else ChildScreen.CLASS_SELECTION
+                            studentScreen = if (!selectedClass.isNullOrBlank()) StudentScreen.NAME_SELECTION else StudentScreen.CLASS_SELECTION
                         }
-                    } 
+                    }
                     // Recovery: If we DON'T have a local activeOrder but someone from this session is checked-in but not served.
                     else if (showWaitingOverlayAfterConfirm) {
-                         val pendingOrder = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
-                         if (pendingOrder != null) {
-                             android.util.Log.d("SLP_SYNC", "Recovered pending order for child: ${pendingOrder.name}")
-                             activeOrder = pendingOrder
-                         } else {
-                             showWaitingOverlayAfterConfirm = false
-                         }
+                        val pendingOrder = simulatedDatabase.firstOrNull { it.checkedIn && !it.served }
+                        if (pendingOrder != null) {
+                            android.util.Log.d("SLP_SYNC", "Recovered pending order for student: ${pendingOrder.name}")
+                            activeOrder = pendingOrder
+                        } else {
+                            showWaitingOverlayAfterConfirm = false
+                        }
                     }
                 }
-                renderChildView()
+                renderStudentView()
             }
             null -> Unit
         }
@@ -447,7 +444,7 @@ class MainActivity : ComponentActivity() {
         val selectedButton = findViewById<RadioButton>(checkedId)
         return when (selectedButton.id) {
             binding.kitchenTabletRadio.id -> TabletType.KITCHEN
-            binding.childTabletRadio.id -> TabletType.CHILD
+            binding.childTabletRadio.id -> TabletType.STUDENT
             else -> null
         }
     }

@@ -339,6 +339,70 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Status strip: pinned between header and scrollable content.
+             All dynamic status/loading messages render here so they are
+             always visible at the top regardless of scroll position. -->
+        <LinearLayout
+            android:id="@+id/statusStrip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/kitchen_bg"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:id="@+id/serviceStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/gotham"
+                android:gravity="start"
+                android:textColor="@color/kitchen_text_secondary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/prepLoadingText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/gotham"
+                android:text="@string/loading_todays_meals"
+                android:textColor="@color/kitchen_warning"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/prepLoadingProgress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="16dp"
+                android:layout_marginTop="4dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/kitchen_warning"
+                android:indeterminateTintMode="src_in"
+                android:progressTint="@color/kitchen_warning"
+                android:progressBackgroundTint="@color/button_secondary_border"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/firebaseStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="#FEF2F2"
+                android:fontFamily="@font/gotham"
+                android:padding="10dp"
+                android:textColor="@color/kitchen_danger"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
         <androidx.core.widget.NestedScrollView
             android:id="@+id/appScrollView"
             android:layout_width="match_parent"
@@ -427,49 +491,12 @@
                                     android:layout_marginTop="10dp"
                                     android:orientation="vertical" />
 
-                                <TextView
-                                    android:id="@+id/prepLoadingText"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="10dp"
-                                    android:fontFamily="@font/gotham"
-                                    android:text="@string/loading_todays_meals"
-                                    android:textColor="@color/kitchen_warning"
-                                    android:textSize="16sp"
-                                    android:textStyle="bold"
-                                    android:visibility="gone" />
-
-                                <ProgressBar
-                                    android:id="@+id/prepLoadingProgress"
-                                    style="?android:attr/progressBarStyleHorizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="16dp"
-                                    android:layout_marginTop="10dp"
-                                    android:indeterminate="true"
-                                    android:indeterminateTint="@color/kitchen_warning"
-                                    android:indeterminateTintMode="src_in"
-                                    android:progressTint="@color/kitchen_warning"
-                                    android:progressBackgroundTint="@color/button_secondary_border"
-                                    android:visibility="gone" />
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
 
 
-
-                    <TextView
-                        android:id="@+id/serviceStatusText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginStart="4dp"
-                        android:layout_marginBottom="8dp"
-                        android:fontFamily="@font/gotham"
-                        android:gravity="start"
-                        android:textColor="@color/kitchen_text_secondary"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
 
                     <LinearLayout
                         android:id="@+id/kitchenPrimaryActionsRow"
@@ -528,19 +555,6 @@
                         android:background="@color/kitchen_bg"
                         android:orientation="vertical"
                         android:padding="16dp">
-
-                        <TextView
-                            android:id="@+id/firebaseStatusText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:background="#FEF2F2"
-                            android:fontFamily="@font/gotham"
-                            android:padding="10dp"
-                            android:textColor="@color/kitchen_danger"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:visibility="gone" />
 
                         <com.google.android.material.card.MaterialCardView
                             android:id="@+id/serviceStatsCard"

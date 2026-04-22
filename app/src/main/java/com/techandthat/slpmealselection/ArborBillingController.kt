@@ -3,7 +3,7 @@ package com.techandthat.slpmealselection
 import android.util.Log
 import android.widget.Toast
 import com.google.firebase.functions.FirebaseFunctionsException
-import com.techandthat.slpmealselection.model.ChildScreen
+import com.techandthat.slpmealselection.model.StudentScreen
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -144,7 +144,7 @@ internal fun MainActivity.runBillingUploadCallable(retryOnUnauthenticated: Boole
                     servicePausedByKitchen = false
                     showingServiceStats = true
                     mealTimeStarted = false
-                    childScreen = ChildScreen.IDLE
+                    studentScreen = StudentScreen.IDLE
                     isLoadingMeals = false
                     firebaseStatusMessage = null
 
