@@ -14,6 +14,7 @@
     <color name="kitchen_success">#0E76BD</color>
     <color name="kitchen_warning">#D97706</color>
     <color name="kitchen_danger">#DC2626</color>
+    <color name="kitchen_safe">#2E7D32</color>
     <color name="kitchen_text_primary">#323232</color>
     <color name="kitchen_text_secondary">#6B7280</color>
     <color name="meal_count_text">#323232</color>

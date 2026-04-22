@@ -283,7 +283,7 @@ class MainActivity : ComponentActivity() {
         }
 
         binding.endServiceButton.setOnClickListener { confirmAndEndService() }
-        binding.changeSchoolButton.setOnClickListener { showChangeSchoolDialog() }
+        binding.bloemfonteinLogo.setOnClickListener { showChangeSchoolDialog() }
 
         // Data Loading for Kitchen.
         binding.loadTodaysMealsButton.setOnClickListener {

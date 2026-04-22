@@ -1223,8 +1223,11 @@ function extractMealChoiceRecord(row) {
     "";
 
   const dietaryRequirements = (att.dietaryRequirements || [])
-      .map((req) => req && req.dietaryRequirementType &&
-        req.dietaryRequirementType.displayName)
+      .map((req) => {
+        if (typeof req === "string") return req.trim();
+        return req && req.dietaryRequirementType &&
+          req.dietaryRequirementType.displayName;
+      })
       .filter(Boolean)
       .map((name) => String(name).trim());
 

@@ -95,6 +95,7 @@
     <string name="stats_loaded_at">Meals loaded at: %1$s</string>
     <string name="stats_prep_time">Prep time: %1$d mins</string>
     <string name="dietary_label">DIETARY: %1$s</string>
+    <string name="dietary_clear">✓ No Dietary Requirements</string>
     <string name="stats_prep_time_value">%1$dm</string>
     <string name="stats_label_loaded_at">LOADED AT</string>
     <string name="stats_label_prep_time">PREP TIME</string>

@@ -254,8 +254,12 @@
                 android:layout_marginHorizontal="16dp"
                 android:adjustViewBounds="true"
                 android:scaleType="fitCenter"
-                android:contentDescription="@string/slp_logo"
-                android:src="@drawable/bloemfontein_logo" />
+                android:contentDescription="@string/change_school"
+                android:src="@drawable/bloemfontein_logo"
+                android:clickable="true"
+                android:focusable="true"
+                android:minWidth="88dp"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -289,30 +293,9 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/changeSchoolButton"
-                        android:layout_width="148dp"
-                        android:layout_height="40dp"
-                        android:backgroundTint="@color/button_secondary_bg"
-                        android:fontFamily="@font/gotham"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:minHeight="40dp"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="12dp"
-                        android:text="@string/change_school_with_icon"
-                        android:textAllCaps="true"
-                        android:textColor="@color/button_secondary_text"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        app:cornerRadius="6dp"
-                        app:strokeColor="@color/button_secondary_border"
-                        app:strokeWidth="1dp" />
-
-                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/endServiceButton"
                         android:layout_width="148dp"
                         android:layout_height="40dp"
-                        android:layout_marginStart="8dp"
                         android:backgroundTint="#FFFFFF"
                         android:fontFamily="@font/gotham"
                         android:insetTop="0dp"

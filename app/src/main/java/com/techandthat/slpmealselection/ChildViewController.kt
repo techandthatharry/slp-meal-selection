@@ -23,10 +23,11 @@ internal fun MainActivity.renderChildView() {
     // Logo click returns to setup/login for maintenance.
     binding.headerLogo.setOnClickListener { returnToSetup() }
     binding.bloemfonteinLogo.visibility = View.VISIBLE
+    binding.bloemfonteinLogo.setOnClickListener(null)
+    binding.bloemfonteinLogo.isClickable = false
     
     // Hide controls irrelevant to child mode.
     binding.loadTodaysMealsButton.visibility = View.GONE
-    binding.changeSchoolButton.visibility = View.GONE
     binding.endServiceButton.visibility = View.GONE
     binding.pauseServiceHeaderButton.visibility = View.GONE
     binding.contentTitle.visibility = View.GONE

@@ -64,6 +64,8 @@ internal fun MainActivity.renderKitchenView() {
     }
     binding.headerLogo.visibility = View.VISIBLE
     binding.bloemfonteinLogo.visibility = View.VISIBLE
+    binding.bloemfonteinLogo.isClickable = !serviceStarted
+    binding.bloemfonteinLogo.alpha = if (serviceStarted) 0.4f else 1f
 
     // Delegate to stats view if service has ended and user is viewing the summary.
     if (showingServiceStats) {
@@ -148,10 +150,8 @@ internal fun MainActivity.renderKitchenView() {
         loadingMessage = null
     }
 
-    // Secondary navigation buttons for resetting the app or ending the day.
-    binding.changeSchoolButton.visibility = View.VISIBLE
+    // Secondary navigation button for ending the day.
     binding.endServiceButton.visibility = View.VISIBLE
-    binding.changeSchoolButton.isEnabled = !serviceStarted
     binding.endServiceButton.isEnabled = serviceStarted || simulatedDatabase.isNotEmpty() || activeOrder != null
 
     // Display Firestore/Arbor status messages (errors or sync progress).
@@ -181,9 +181,16 @@ internal fun MainActivity.renderKitchenView() {
             ?.takeIf { it.isNotBlank() }
 
         if (dietaryText.isNullOrBlank()) {
-            binding.kitchenOrderDietaryRequirements.visibility = View.GONE
+            binding.kitchenOrderDietaryRequirements.text = getString(R.string.dietary_clear)
+            binding.kitchenOrderDietaryRequirements.setTextColor(
+                ContextCompat.getColor(this, R.color.kitchen_safe)
+            )
+            binding.kitchenOrderDietaryRequirements.visibility = View.VISIBLE
         } else {
             binding.kitchenOrderDietaryRequirements.text = getString(R.string.dietary_label, dietaryText)
+            binding.kitchenOrderDietaryRequirements.setTextColor(
+                ContextCompat.getColor(this, R.color.kitchen_danger)
+            )
             binding.kitchenOrderDietaryRequirements.visibility = View.VISIBLE
         }
 
@@ -236,7 +243,6 @@ internal fun MainActivity.renderServiceStatsView() {
 
     // Hide dashboard-specific control buttons.
     binding.endServiceButton.visibility = View.GONE
-    binding.changeSchoolButton.visibility = View.GONE
     binding.pauseServiceHeaderButton.visibility = View.GONE
 
     val stats = latestServiceStats
