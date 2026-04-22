@@ -2,6 +2,8 @@ package com.techandthat.slpmealselection.ui
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Color
+import android.view.View
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
@@ -11,10 +13,15 @@ import com.techandthat.slpmealselection.databinding.ActivityMainBinding
 import com.techandthat.slpmealselection.model.MealEntry
 
 /**
- * UI components for the "Child-Facing Tablet" mode.
- * Dynamically builds the step-by-step selection screens for students using a
- * button-based navigation flow optimized for large touchscreens.
+ * UI components for the "Student-Facing Tablet" mode.
+ * Dynamically builds the step-by-step selection screens using a kiosk-friendly
+ * list design: white background, black text, and grey row separators.
  */
+
+// Light grey used for row separators throughout the selection screens.
+private const val SEPARATOR_COLOR = "#E0E0E0"
+// Row text color for selection buttons.
+private const val ROW_TEXT_COLOR = "#212121"
 
 // Dynamically populates the "Class Selection" screen with buttons for each registration group.
 fun renderClassSelectionStep(
@@ -25,9 +32,13 @@ fun renderClassSelectionStep(
     onClassSelected: (String) -> Unit
 ) {
     // Toggle container visibilities to show the class selection step.
-    binding.classSelectionContainer.visibility = android.view.View.VISIBLE
-    binding.nameSelectionContainer.visibility = android.view.View.GONE
-    binding.checkInSuccessContainer.visibility = android.view.View.GONE
+    binding.classSelectionContainer.visibility = View.VISIBLE
+    binding.nameSelectionContainer.visibility = View.GONE
+    binding.checkInSuccessContainer.visibility = View.GONE
+
+    // White backgrounds for kiosk-friendly appearance.
+    binding.classSelectionContainer.setBackgroundColor(Color.WHITE)
+    binding.classButtonsContainer.setBackgroundColor(Color.WHITE)
 
     // Ensure nested scrolling is enabled for the dynamic list.
     androidx.core.view.ViewCompat.setNestedScrollingEnabled(binding.classSelectionContainer, true)
@@ -56,32 +67,37 @@ fun renderClassSelectionStep(
 
     // Clear existing buttons and rebuild the list.
     binding.classButtonsContainer.removeAllViews()
-    val classButtonHeight = containerHeight / 4
 
-    // Apply branding and styling to the generated buttons.
+    // Aim for ~4 classes per screen; clamp to a sensible touch target range.
+    val classButtonHeight = (containerHeight / 4).coerceIn(80, 200)
+
+    // Shared styling values.
     val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
     val density = context.resources.displayMetrics.density
-    val cornerRadiusPx = (6 * density).toInt()
-    val primaryColor = ContextCompat.getColor(context, R.color.kitchen_success)
-    val primaryTextColor = ContextCompat.getColor(context, R.color.white)
+    val separatorHeightPx = (1 * density).toInt().coerceAtLeast(1)
+    val textColor = Color.parseColor(ROW_TEXT_COLOR)
+    val strokeColor = ColorStateList.valueOf(Color.parseColor(SEPARATOR_COLOR))
 
     // Add a button for each unique class found.
-    classes.forEach { className ->
+    classes.forEachIndexed { index, className ->
         val button = MaterialButton(context).apply {
             text = className
-            textSize = 34f
+            textSize = 32f
             isAllCaps = false
             typeface = gothamTypeface
-            backgroundTintList = ColorStateList.valueOf(primaryColor)
-            setTextColor(primaryTextColor)
-            setPadding(24, 24, 24, 24)
-            cornerRadius = cornerRadiusPx
+            backgroundTintList = ColorStateList.valueOf(Color.WHITE)
+            setTextColor(textColor)
+            setPadding(32, 0, 32, 0)
+            gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
+            cornerRadius = 0
+            strokeWidth = 0
+            insetTop = 0
+            insetBottom = 0
+            minHeight = classButtonHeight
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 classButtonHeight
-            ).apply {
-                topMargin = 12
-            }
+            )
             setOnClickListener {
                 // Prevent multiple clicks if an overlay is about to show.
                 if (!showWaitingOverlayAfterConfirm) {
@@ -90,6 +106,16 @@ fun renderClassSelectionStep(
             }
         }
         binding.classButtonsContainer.addView(button)
+
+        // Add a grey separator after every row.
+        val separator = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                separatorHeightPx
+            )
+            setBackgroundColor(Color.parseColor(SEPARATOR_COLOR))
+        }
+        binding.classButtonsContainer.addView(separator)
     }
 }
 
@@ -105,10 +131,14 @@ fun renderNameSelectionStep(
     onStudentSelected: (MealEntry) -> Unit
 ) {
     // Toggle container visibilities to show the name selection step.
-    binding.classSelectionContainer.visibility = android.view.View.GONE
-    binding.nameSelectionContainer.visibility = android.view.View.VISIBLE
-    binding.checkInSuccessContainer.visibility = android.view.View.GONE
-    binding.backToClassesButton.visibility = android.view.View.VISIBLE
+    binding.classSelectionContainer.visibility = View.GONE
+    binding.nameSelectionContainer.visibility = View.VISIBLE
+    binding.checkInSuccessContainer.visibility = View.GONE
+    binding.backToClassesButton.visibility = View.VISIBLE
+
+    // White backgrounds for kiosk-friendly appearance.
+    binding.nameSelectionContainer.setBackgroundColor(Color.WHITE)
+    binding.nameButtonsContainer.setBackgroundColor(Color.WHITE)
 
     // Ensure scrolling is enabled for the dynamic name list.
     androidx.core.view.ViewCompat.setNestedScrollingEnabled(binding.nameListScroll, true)
@@ -129,13 +159,12 @@ fun renderNameSelectionStep(
         ?: binding.childStepContainer.height.takeIf { it > 0 }
         ?: binding.nameSelectionContainer.measuredHeight.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
-    val studentButtonHeight = (containerHeight / 6).coerceAtMost(180)
+    val studentButtonHeight = (containerHeight / 6).coerceIn(72, 160)
 
     val gothamTypeface = ResourcesCompat.getFont(context, R.font.gotham)
     val density = context.resources.displayMetrics.density
-    val cornerRadiusPx = (6 * density).toInt()
-    val primaryColor = ContextCompat.getColor(context, R.color.kitchen_success)
-    val primaryTextColor = ContextCompat.getColor(context, R.color.white)
+    val separatorHeightPx = (1 * density).toInt().coerceAtLeast(1)
+    val textColor = Color.parseColor(ROW_TEXT_COLOR)
 
     // Add a button for each student, displaying their name and chosen meal if available.
     students.forEach { student ->
@@ -147,19 +176,22 @@ fun renderNameSelectionStep(
 
         val button = MaterialButton(context).apply {
             text = label
-            textSize = 30f
+            textSize = 28f
             isAllCaps = false
             typeface = gothamTypeface
-            backgroundTintList = ColorStateList.valueOf(primaryColor)
-            setTextColor(primaryTextColor)
-            setPadding(24, 24, 24, 24)
-            cornerRadius = cornerRadiusPx
+            backgroundTintList = ColorStateList.valueOf(Color.WHITE)
+            setTextColor(textColor)
+            setPadding(32, 0, 32, 0)
+            gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
+            cornerRadius = 0
+            strokeWidth = 0
+            insetTop = 0
+            insetBottom = 0
+            minHeight = studentButtonHeight
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 studentButtonHeight
-            ).apply {
-                topMargin = 12
-            }
+            )
             setOnClickListener {
                 if (activeOrder == null && !showWaitingOverlayAfterConfirm) {
                     onStudentSelected(student)
@@ -167,6 +199,16 @@ fun renderNameSelectionStep(
             }
         }
         binding.nameButtonsContainer.addView(button)
+
+        // Add a grey separator after every row.
+        val separator = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                separatorHeightPx
+            )
+            setBackgroundColor(Color.parseColor(SEPARATOR_COLOR))
+        }
+        binding.nameButtonsContainer.addView(separator)
     }
 }
 
@@ -189,9 +231,9 @@ private fun mealIconFor(mealName: String): String {
 
 // Renders the final "Selection Success" screen with a confirmation of the chosen meal.
 fun renderSuccessStep(binding: ActivityMainBinding, activeOrder: MealEntry?) {
-    binding.classSelectionContainer.visibility = android.view.View.GONE
-    binding.nameSelectionContainer.visibility = android.view.View.GONE
-    binding.checkInSuccessContainer.visibility = android.view.View.VISIBLE
+    binding.classSelectionContainer.visibility = View.GONE
+    binding.nameSelectionContainer.visibility = View.GONE
+    binding.checkInSuccessContainer.visibility = View.VISIBLE
 
     // Display the meal name and icon on the final "Confirm" button.
     val mealLabel = activeOrder?.meal?.takeIf { it.isNotBlank() } ?: "Meal"

@@ -20,6 +20,15 @@ internal fun MainActivity.renderStudentView() {
     binding.headerTitle.text = getString(R.string.header_service_ongoing)
     binding.headerLogo.visibility = View.VISIBLE
 
+    // Reduce header height to 80dp on the student tablet (kitchen stays at 160dp).
+    // This reclaims vertical space for the selection step container.
+    val studentHeaderPx = (80 * resources.displayMetrics.density).toInt()
+    if (binding.headerBar.layoutParams.height != studentHeaderPx) {
+        binding.headerBar.layoutParams = binding.headerBar.layoutParams.apply {
+            height = studentHeaderPx
+        }
+    }
+
     // Logo click returns to setup/login for maintenance.
     binding.headerLogo.setOnClickListener { returnToSetup() }
     binding.bloemfonteinLogo.visibility = View.VISIBLE
@@ -43,22 +52,39 @@ internal fun MainActivity.renderStudentView() {
     // Safety Gate: Do not allow meal selection if the kitchen has paused or hasn't started service.
     if (!serviceStarted || servicePausedByKitchen) {
         binding.serviceStatusText.text = getString(R.string.child_waiting_for_service)
-        binding.serviceStatusText.setTextColor(ContextCompat.getColor(this, R.color.kitchen_text_secondary))
+        binding.serviceStatusText.setTextColor(ContextCompat.getColor(this, R.color.kitchen_warning))
         binding.serviceStatusText.visibility = View.VISIBLE
+        binding.statusStrip.visibility = View.VISIBLE
         binding.startMealTimeButton.visibility = View.GONE
         binding.childStepContainer.visibility = View.GONE
         binding.waitingOverlay.visibility = View.GONE
         return
     }
 
-    // Clear the status strip — service is live.
+    // Clear the status strip — service is live. Collapse it to zero height.
     binding.serviceStatusText.visibility = View.GONE
+    binding.statusStrip.visibility = View.GONE
 
     // Active Service State: ensure mealTimeStarted is true and we're in a selection step.
     mealTimeStarted = true
     binding.contentSubtitle.visibility = View.GONE
     binding.startMealTimeButton.visibility = View.GONE
     binding.childStepContainer.visibility = View.VISIBLE
+
+    // Size the step container to fill all available vertical space, preventing confirmation
+    // buttons from being clipped by the header or footer on varying screen sizes.
+    binding.appScrollView.post {
+        val scrollHeight = binding.appScrollView.height
+        val topPad = binding.appScrollView.paddingTop
+        val botPad = binding.appScrollView.paddingBottom
+        val available = scrollHeight - topPad - botPad
+        val minHeight = (400 * resources.displayMetrics.density).toInt()
+        val targetHeight = available.coerceAtLeast(minHeight)
+        if (binding.childStepContainer.layoutParams.height != targetHeight) {
+            binding.childStepContainer.layoutParams =
+                binding.childStepContainer.layoutParams.apply { height = targetHeight }
+        }
+    }
 
     // Handle the "Please wait" overlay shown after a student confirms until the kitchen marks served.
     val isWaitingForKitchen = showWaitingOverlayAfterConfirm && activeOrder != null

@@ -100,16 +100,15 @@ internal fun MainActivity.renderKitchenView() {
         getString(R.string.meals_to_prepare)
     }
     
+    // All status strip messages use a consistent orange — visually distinct from
+    // both error red and success green, so attention is drawn without alarm.
     binding.serviceStatusText.setTextColor(
-        ContextCompat.getColor(
-            this,
-            when {
-                serviceStarted && servicePausedByKitchen -> R.color.kitchen_danger
-                serviceStarted && activeOrder == null -> R.color.kitchen_success
-                else -> R.color.kitchen_text_secondary
-            }
-        )
+        ContextCompat.getColor(this, R.color.kitchen_warning)
     )
+
+    // Task 6: Hide the "Meals to be served" summary card during active service;
+    // it is only useful in the prep phase before service starts.
+    binding.prepListContainer.visibility = if (serviceStarted) View.GONE else View.VISIBLE
 
     // Manage visibility and interactivity of service control buttons.
     binding.startServiceButton.visibility = if (shouldHideLoadAndStart) View.GONE else View.VISIBLE
@@ -227,6 +226,22 @@ internal fun MainActivity.renderKitchenView() {
         binding.kitchenContent.addView(binding.prepAndLoadRow, 0)
         binding.kitchenContent.removeView(binding.kitchenOrderContainer)
         binding.kitchenContent.addView(binding.kitchenOrderContainer)
+    }
+
+    // Collapse the status strip to zero height when no message is shown.
+    val anyStripVisible =
+        binding.serviceStatusText.visibility == View.VISIBLE ||
+        binding.prepLoadingText.visibility == View.VISIBLE ||
+        binding.prepLoadingProgress.visibility == View.VISIBLE ||
+        binding.firebaseStatusText.visibility == View.VISIBLE
+    binding.statusStrip.visibility = if (anyStripVisible) View.VISIBLE else View.GONE
+
+    // Restore kitchen header to full height (student mode may have reduced it).
+    val kitchenHeaderHeightPx = (160 * resources.displayMetrics.density).toInt()
+    if (binding.headerBar.layoutParams.height != kitchenHeaderHeightPx) {
+        binding.headerBar.layoutParams = binding.headerBar.layoutParams.apply {
+            height = kitchenHeaderHeightPx
+        }
     }
 
     // Ensure the view is scrolled to the top after re-rendering.

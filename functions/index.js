@@ -1380,11 +1380,16 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
   const writeBatch = db.batch();
   let written = 0;
 
-  studentIds.forEach((studentId) => {
+  studentIds.forEach((studentId, index) => {
     const rec = records[studentId];
     const slugClass = toSlug(rec.className || "unknown");
     const slugName = toSlug(rec.displayName || `student_${studentId}`);
     const docId = `${slugSchool}_${slugClass}_${slugName}`;
+
+    // Apply demo fallback when Arbor returns no dietary requirements (sandbox behaviour).
+    const finalDietaryRequirements = rec.dietaryRequirements.length > 0
+      ? rec.dietaryRequirements
+      : fallbackDietaryRequirements(index);
 
     const docRef = db.collection("childRecords").doc(docId);
     writeBatch.set(docRef, {
@@ -1393,7 +1398,7 @@ async function syncMealChoicesForSchool(schoolName, authHeaders, targetDate) {
       schoolName,
       mealSelected: rec.mealProvisionName,
       mealName: rec.mealName,
-      dietaryRequirements: rec.dietaryRequirements,
+      dietaryRequirements: finalDietaryRequirements,
       arborStudentId: studentId,
       served: false,
       source: "arbor",
