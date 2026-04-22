@@ -260,6 +260,14 @@ internal fun MainActivity.renderServiceStatsView() {
     binding.endServiceButton.visibility = View.GONE
     binding.pauseServiceHeaderButton.visibility = View.GONE
 
+    // The stats screen has no status messages — clear and collapse the strip so stale
+    // messages from the Arbor upload phase don't linger into the summary view.
+    binding.serviceStatusText.visibility = View.GONE
+    binding.prepLoadingText.visibility = View.GONE
+    binding.prepLoadingProgress.visibility = View.GONE
+    binding.firebaseStatusText.visibility = View.GONE
+    binding.statusStrip.visibility = View.GONE
+
     val stats = latestServiceStats
     if (stats != null) {
         // Populate the 6 summary cards with session data.
