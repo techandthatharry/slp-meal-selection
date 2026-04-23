@@ -29,6 +29,16 @@ internal fun MainActivity.renderStudentView() {
         }
     }
 
+    // Remove all scroll view padding and the childContent top margin so the buttons
+    // sit flush against the header with no wasted gap. Kitchen mode restores these.
+    if (binding.appScrollView.paddingTop != 0) {
+        binding.appScrollView.setPadding(0, 0, 0, 0)
+        binding.appScrollView.clipToPadding = true
+    }
+    (binding.childContent.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
+        if (lp.topMargin != 0) { lp.topMargin = 0; binding.childContent.requestLayout() }
+    }
+
     // Logo click returns to setup/login for maintenance.
     binding.headerLogo.setOnClickListener { returnToSetup() }
     binding.bloemfonteinLogo.visibility = View.VISIBLE
@@ -71,15 +81,12 @@ internal fun MainActivity.renderStudentView() {
     binding.startMealTimeButton.visibility = View.GONE
     binding.childStepContainer.visibility = View.VISIBLE
 
-    // Size the step container to fill all available vertical space, preventing confirmation
-    // buttons from being clipped by the header or footer on varying screen sizes.
+    // Fill the step container to exactly the scroll view height — padding is already 0
+    // so the buttons reach the top and bottom edges with no gap.
     binding.appScrollView.post {
-        val scrollHeight = binding.appScrollView.height
-        val topPad = binding.appScrollView.paddingTop
-        val botPad = binding.appScrollView.paddingBottom
-        val available = scrollHeight - topPad - botPad
-        val minHeight = (400 * resources.displayMetrics.density).toInt()
-        val targetHeight = available.coerceAtLeast(minHeight)
+        val targetHeight = binding.appScrollView.height.coerceAtLeast(
+            (400 * resources.displayMetrics.density).toInt()
+        )
         if (binding.childStepContainer.layoutParams.height != targetHeight) {
             binding.childStepContainer.layoutParams =
                 binding.childStepContainer.layoutParams.apply { height = targetHeight }

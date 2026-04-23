@@ -244,6 +244,14 @@ internal fun MainActivity.renderKitchenView() {
         }
     }
 
+    // Restore scroll view padding removed by student mode.
+    val dp16 = (16 * resources.displayMetrics.density).toInt()
+    val dp56 = (56 * resources.displayMetrics.density).toInt()
+    if (binding.appScrollView.paddingTop != dp16) {
+        binding.appScrollView.setPadding(dp16, dp16, dp16, dp56)
+        binding.appScrollView.clipToPadding = false
+    }
+
     // Ensure the view is scrolled to the top after re-rendering.
     binding.appScrollView.scrollTo(0, 0)
 }
